@@ -11,6 +11,14 @@ function log () {
   }
 }
 
+function makeCallBack (resolve, reject) {
+  return (err, res, body) => {
+    if (typeof body === 'string') body = JSON.parse(body)
+    if (err || body.error) return reject(err || body)
+    else return resolve()
+  }
+}
+
 module.exports =
 class CouchContinuum {
   constructor ({ couchUrl, dbName, q }) {
@@ -25,47 +33,42 @@ class CouchContinuum {
 
   _createDb (dbName) {
     return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
       const url = [this.url, dbName].join('/')
       request({
         url,
         method: 'PUT',
         json: { q: this.q }
-      }, (err) => {
-        if (err) return reject(err)
-        else return resolve()
-      })
+      }, done)
     })
   }
 
   _destroyDb (dbName) {
     return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
       const url = [this.url, dbName].join('/')
       request({
         url,
         method: 'DELETE'
-      }, (err) => {
-        if (err) return reject(err)
-        else return resolve()
-      })
+      }, done)
     })
   }
 
   _setUnavailable (dbName) {
     return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
       const url = [this.url, dbName, '_local', 'in-maintenance'].join('/')
       request({
         url,
         method: 'PUT',
         json: { down: true }
-      }, (err, res) => {
-        if (err) return reject(err)
-        else return resolve()
-      })
+      }, done)
     })
   }
 
   _setAvailable (dbName) {
     return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
       const url = [this.url, dbName, '_local', 'in-maintenance'].join('/')
       request({
         url,
@@ -77,25 +80,20 @@ class CouchContinuum {
           url,
           method: 'DELETE',
           json: { rev: doc._rev }
-        }, (err) => {
-          if (err) return reject(err)
-          else return resolve()
-        })
+        }, done)
       })
     })
   }
 
   _replicate (source, target) {
     return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
       const url = [this.url, '_replicate'].join('/')
       request({
         url,
         method: 'POST',
         json: { source, target }
-      }, (err) => {
-        if (err) return reject(err)
-        else return resolve()
-      })
+      }, done)
     })
   }
 
