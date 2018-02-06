@@ -6,21 +6,24 @@
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation. For example:
 
 ```bash
-$ COUCH_URL=https://... couch-continuum -q 6 <DB_NAME>
-Migrating DB_NAME...
-...success!
-Differences:
-- q: 8
-+ q: 6
+$ couch-continuum -q 6 -n DB_NAME -u COUCH_URL
+[couch-continuum] Migrating database DB_NAME to { q: 6 }...
+[couch-continuum] ...success!
 ```
 
 You can also use it as a [nodejs](http://nodejs.org/) module:
 
 ```javascript
 const CouchContinuum = require('couch-continuum')
-const OPTIONS = { ... }
 
-CouchContinuum.start(OPTIONS, function (err) {
+// the complete URL (including credentials) to the CouchDB cluster
+const couchUrl
+// the name of the database to migrate
+const dbName = '...'
+// a number for the database's new quorum setting
+const q = 8
+
+CouchContinuum.start({ couchUrl, dbName, q }, function (err) {
 	// Reports an error if any occurred.
 	// Otherwise, the DB was successfully migrated!
 })
@@ -44,11 +47,20 @@ CouchContinuum works like this:
 
 The process exits successfully once the database has been completely migrated. Faced with any kind of failure, the process will attempt to roll affected databases back to their pre-migration state.
 
-While the process works, consider the affected database(s) unavailable: reads and writes during this time may return inconsistent or incorrect information about documents in the database. To signal that the database is unavailable, the process sets `/{db}/_local/in-maintenance` to `{ down: true }` and deletes the document once it exits.
+While the process works, consider the affected database(s) unavailable: reads and writes during this time may return inconsistent or incorrect information about documents in the database. To signal that the database is unavailable, the process sets `/{db}/_local/in-maintenance` to `{ down: true }` and deletes the document once it exits. Application components that depend on the database should poll for the existence of that document and back off when it exists.
 
 ## Installation
 
-TODO
+Currently, you must install the tool from source using [git](https://git-scm.com/) and [npm](https://www.npmjs.com/):
+
+```bash
+git clone https://github.com/neighbourhoodie/couch-continuum.git
+cd couch-continuum
+npm install
+npm link
+```
+
+Now you can use the `couch-continuum` command.
 
 ## Usage
 
