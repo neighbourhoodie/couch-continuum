@@ -33,7 +33,8 @@ require('yargs')
         },
         verbose: {
           alias: 'v',
-          description: 'Enable verbose logging.'
+          description: 'Enable verbose logging.',
+          type: 'boolean'
         }
       })
     },

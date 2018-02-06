@@ -60,11 +60,23 @@ npm install
 npm link
 ```
 
-Now you can use the `couch-continuum` command.
+Now you can use the `couch-continuum` command. Run `couch-continuum -h` to see usage information.
 
 ## Usage
 
-TODO
+```bash
+couch-continuum
+
+Options:
+  --version       Show version number                                  [boolean]
+  --config        Path to JSON config file
+  --couchUrl, -u  The URL of the CouchDB cluster to act upon.
+                                              [default: "http://localhost:5984"]
+  --dbName, -n    The name of the database to modify.        [string] [required]
+  -q              The desired "q" value for the new database.[number] [required]
+  --verbose, -v   Enable verbose logging.                              [boolean]
+  -h, --help      Show help                                            [boolean]
+```
 
 ## Why "Continuum"?
 
