@@ -45,9 +45,18 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should work', function () {
-    this.timeout(1000 * 10) // 5s
+    this.timeout(1000 * 10)
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
     return continuum.start()
+  })
+
+  it('should roll back changes', function () {
+    this.timeout(1000 * 10)
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum._createDb(continuum.db2).then(() => {
+      return continuum.start()
+    })
   })
 })
