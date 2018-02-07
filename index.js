@@ -31,6 +31,14 @@ class CouchContinuum {
     this.q = q
   }
 
+  _checkDb (dbName) {
+    return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
+      const url = [this.url, dbName].join('/')
+      request({ url }, done)
+    })
+  }
+
   _createDb (dbName) {
     return new Promise((resolve, reject) => {
       const done = makeCallBack(resolve, reject)
@@ -51,6 +59,14 @@ class CouchContinuum {
         url,
         method: 'DELETE'
       }, done)
+    })
+  }
+
+  _isAvailable (dbName) {
+    return new Promise((resolve, reject) => {
+      const done = makeCallBack(resolve, reject)
+      const url = [this.url, dbName, '_local', 'in-maintenance'].join('/')
+      request({ url }, done)
     })
   }
 
@@ -75,6 +91,10 @@ class CouchContinuum {
         method: 'GET',
         json: true
       }, (err, res, doc) => {
+        if (doc.error) {
+          if (doc.error === 'not_found') return resolve()
+          else return reject(doc)
+        }
         if (err) return reject(err)
         request({
           url,
@@ -100,9 +120,6 @@ class CouchContinuum {
   start () {
     log('Creating temp db:', this.db2)
     return this._createDb(this.db2).then(() => {
-      log('Setting primary db as unavailable...')
-      return this._setUnavailable(this.db1)
-    }).then(() => {
       log('Beginning replication of primary to temp...')
       return this._replicate(this.db1, this.db2)
     }).then(() => {
@@ -119,6 +136,23 @@ class CouchContinuum {
       return this._replicate(this.db2, this.db1)
     }).then(() => {
       log('Replicated. Destroying temp...')
+      return this._destroyDb(this.db2)
+    }).then(() => {
+      log('Setting primary as available...')
+      return this._setAvailable(this.db1)
+    }).catch((e) => {
+      log('Unexpected error: %j', e)
+      return this.rollBack()
+    })
+  }
+
+  rollBack () {
+    log('Rolling back changes...')
+    return this._checkDb(this.db2).then(() => {
+      log('Restoring documents from temp to primary...')
+      return this._replicate(this.db2, this.db1)
+    }).then(() => {
+      log('Removing temp db...')
       return this._destroyDb(this.db2)
     }).then(() => {
       log('Setting primary as available...')
