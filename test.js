@@ -6,6 +6,7 @@ const request = require('request')
 const { name, version } = require('./package.json')
 
 describe([name, version].join(' @ '), function () {
+  this.timeout(1000 * 20)
   const couchUrl = process.env.COUCH_URL || 'http://localhost:5984'
   const dbName = 'test-continuum'
   const q = 4
@@ -45,17 +46,31 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should work', function () {
-    this.timeout(1000 * 10)
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
     return continuum.start()
   })
 
   it('should roll back changes', function () {
-    this.timeout(1000 * 10)
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
     return continuum._createDb(continuum.db2).then(() => {
+      return continuum._replicate(dbName, continuum.db2)
+    }).then(() => {
+      return continuum._destroyDb(dbName)
+    }).then(() => {
+      return continuum.start()
+    })
+  })
+
+  it('should handle resume', function () {
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum._setUnavailable(dbName).then(() => {
+      return continuum._createDb(continuum.db2).then(() => {
+        return continuum._replicate(dbName, continuum.db2)
+      })
+    }).then(() => {
       return continuum.start()
     })
   })

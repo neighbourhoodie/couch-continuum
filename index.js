@@ -117,20 +117,60 @@ class CouchContinuum {
     })
   }
 
+  _rollBack () {
+    log('Rolling back changes...')
+    return this._checkDb(this.db2).then(() => {
+      log('Ensuring primary exists...')
+      return this._createDb(this.db1).catch((err) => {
+        if (err.error && err.error === 'file_exists') {
+          return true
+        } else {
+          throw err
+        }
+      })
+    }).then(() => {
+      log('Restoring documents from temp to primary...')
+      return this._replicate(this.db2, this.db1)
+    }).then(() => {
+      log('Removing temp db...')
+      return this._destroyDb(this.db2)
+    }).then(() => {
+      log('Setting primary as available...')
+      return this._setAvailable(this.db1)
+    })
+  }
+
   start () {
     log('Creating temp db:', this.db2)
-    return this._createDb(this.db2).then(() => {
-      log('Beginning replication of primary to temp...')
-      return this._replicate(this.db1, this.db2)
+    return this._createDb(this.db2).catch((err) => {
+      if (err.error && err.error === 'file_exists') {
+        return true
+      } else {
+        throw err
+      }
     }).then(() => {
-      log('Replicated. Destroying primary...')
-      return this._destroyDb(this.db1)
-    }).then(() => {
-      log('Recreating primary with new settings...')
-      return this._createDb(this.db1)
-    }).then(() => {
-      log('Setting primary as unavailable (again)...')
-      return this._setUnavailable(this.db1)
+      log('Checking %s availability...', this.db1)
+      return this._isAvailable(this.db1).then(() => {
+        log('... %s is in maintenance!', this.db1)
+        return true
+      }).catch((err) => {
+        if (err.error && err.error === 'not_found') {
+          log('... %s is available!', this.db1)
+          log('Beginning replication of primary to temp...')
+          return this._replicate(this.db1, this.db2).then(() => {
+            log('Replicated. Destroying primary...')
+            return this._destroyDb(this.db1)
+          }).then(() => {
+            log('Recreating primary with new settings...')
+            return this._createDb(this.db1)
+          }).then(() => {
+            log('Setting primary as unavailable (again)...')
+            return this._setUnavailable(this.db1)
+          })
+        } else {
+          throw err
+        }
+      })
     }).then(() => {
       log('Beginning replication of temp to primary...')
       return this._replicate(this.db2, this.db1)
@@ -142,21 +182,7 @@ class CouchContinuum {
       return this._setAvailable(this.db1)
     }).catch((e) => {
       log('Unexpected error: %j', e)
-      return this.rollBack()
-    })
-  }
-
-  rollBack () {
-    log('Rolling back changes...')
-    return this._checkDb(this.db2).then(() => {
-      log('Restoring documents from temp to primary...')
-      return this._replicate(this.db2, this.db1)
-    }).then(() => {
-      log('Removing temp db...')
-      return this._destroyDb(this.db2)
-    }).then(() => {
-      log('Setting primary as available...')
-      return this._setAvailable(this.db1)
+      return this._rollBack()
     })
   }
 }
