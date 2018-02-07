@@ -45,7 +45,7 @@ CouchContinuum works like this:
 4. Create A1 with desired settings.
 5. Replicate A2 to A1.
 
-The process exits successfully once the database has been completely migrated. Faced with any kind of failure, the process will attempt to roll affected databases back to their pre-migration state.
+The process exits successfully once the database has been completely migrated. Faced with any kind of failure, the process will attempt to roll affected databases back to their pre-migration state. If the tool is halted prematurely, it will resume the migration if run again.
 
 While the process works, consider the affected database(s) unavailable: reads and writes during this time may return inconsistent or incorrect information about documents in the database. To signal that the database is unavailable, the process sets `/{db}/_local/in-maintenance` to `{ down: true }` and deletes the document once it exits. Application components that depend on the database should poll for the existence of that document and back off when it exists.
 
