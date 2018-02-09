@@ -46,6 +46,7 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should work', function () {
+    this.timeout(30 * 1000) // 30s
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
     return continuum.createReplica().then(() => {

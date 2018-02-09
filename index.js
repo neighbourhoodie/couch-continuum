@@ -190,7 +190,13 @@ class CouchContinuum {
       return this._destroyDb(this.db1)
     }).then(() => {
       log('[3/8] Recreating primary with new settings...')
-      return this._createDb(this.db1)
+      return this._createDb(this.db1).then(() => {
+        return new Promise((resolve) => {
+          // sleep, giving the cluster a chance to sort
+          // out the rapid recreation.
+          setTimeout(resolve, 15 * 1000) // 15s
+        })
+      })
     }).then(() => {
       log('[4/8] Setting primary to unavailable.')
       return this._setUnavailable()
