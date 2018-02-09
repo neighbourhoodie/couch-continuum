@@ -80,6 +80,28 @@ class CouchContinuum {
     })
   }
 
+  _setUnavailable () {
+    return makeRequest({
+      url: [this.url, this.db1, '_local', 'in-maintenance'].join('/'),
+      method: 'PUT',
+      json: { down: true }
+    }).catch((error) => {
+      if (error.error === 'file_exists') return null
+      else throw error
+    })
+  }
+
+  _setAvailable () {
+    const url = [this.url, this.db1, '_local', 'in-maintenance'].join('/')
+    return makeRequest({ url, json: true }).catch((error) => {
+      if (error.error === 'not_found') return {}
+      else throw error
+    }).then(({ _rev }) => {
+      const qs = _rev ? { rev: _rev } : {}
+      return makeRequest({ url, qs, method: 'DELETE' })
+    })
+  }
+
   /**
    * Retrieve the update sequence for a given database.
    * @param  {String} dbName  Name of the database to check.
@@ -159,24 +181,30 @@ class CouchContinuum {
 
   replacePrimary () {
     log(`Replacing primary ${this.db1}...`)
-    log('[0/6] Checking if primary is in use...')
+    log('[0/8] Checking if primary is in use...')
     return this._isInUse(this.db1).then(() => {
-      log('[1/6] Verifying primary and replica match...')
+      log('[1/8] Verifying primary and replica match...')
       return this._verifyReplica()
     }).then(() => {
-      log('[2/6] Destroying primary...')
+      log('[2/8] Destroying primary...')
       return this._destroyDb(this.db1)
     }).then(() => {
-      log('[3/6] Recreating primary with new settings...')
+      log('[3/8] Recreating primary with new settings...')
       return this._createDb(this.db1)
     }).then(() => {
-      log('[4/6] Beginning replication of temp to primary...')
+      log('[4/8] Setting primary to unavailable.')
+      return this._setUnavailable()
+    }).then(() => {
+      log('[5/8] Beginning replication of temp to primary...')
       return this._replicate(this.db2, this.db1)
     }).then(() => {
-      log('[5/6] Replicated. Destroying temp...')
+      log('[6/8] Replicated. Destroying temp...')
       return this._destroyDb(this.db2)
     }).then(() => {
-      log('[6/6] Primary migrated to new settings.')
+      log('[7/8] Setting primary to available.')
+      return this._setAvailable()
+    }).then(() => {
+      log('[8/8] Primary migrated to new settings.')
     })
   }
 }
