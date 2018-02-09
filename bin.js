@@ -27,9 +27,29 @@ function getConsent () {
 
 require('yargs')
   .command({
+    command: 'start',
+    aliases: ['$0'],
+    description: 'Migrate a database to new settings.',
+    handler: function (argv) {
+      const { couchUrl, dbName, copyName, q, verbose } = argv
+      if (verbose) process.env.LOG = true
+      const options = { couchUrl, dbName, copyName, q }
+      const continuum = new CouchContinuum(options)
+      log(`Migrating database '${dbName}' to { q: ${q} }...`)
+      continuum.createReplica().then(function () {
+        return getConsent()
+      }).then((consent) => {
+        if (!consent) return log('Could not acquire consent. Exiting...')
+        return continuum.replacePrimary().then(() => {
+          log('... success!')
+        })
+      })
+    }
+  })
+  .command({
     command: 'create-replica',
     aliases: ['create', 'replica'],
-    description: 'Create a replica of the given primary.',
+    description: 'Create a replica of the given primary. (step one)',
     handler: function (argv) {
       const { couchUrl, dbName, copyName, q, verbose } = argv
       if (verbose) process.env.LOG = true
@@ -44,7 +64,7 @@ require('yargs')
   .command({
     command: 'replace-primary',
     aliases: ['replace', 'primary'],
-    description: 'Replace the given primary with the indicated replica. Does not create a replica.',
+    description: 'Replace the given primary with the indicated replica. (step two)',
     handler: function (argv) {
       const { couchUrl, dbName, copyName, q, verbose } = argv
       if (verbose) process.env.LOG = true
@@ -52,26 +72,6 @@ require('yargs')
       const continuum = new CouchContinuum(options)
       log(`Replacing primary ${continuum.db1} with ${continuum.db2} and settings { q:${q} }`)
       getConsent().then((consent) => {
-        if (!consent) return log('Could not acquire consent. Exiting...')
-        return continuum.replacePrimary().then(() => {
-          log('... success!')
-        })
-      })
-    }
-  })
-  .command({
-    command: 'start',
-    aliases: ['$0'],
-    description: 'Create a replica of the given primary and regenerate it with new settings.',
-    handler: function (argv) {
-      const { couchUrl, dbName, copyName, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      const options = { couchUrl, dbName, copyName, q }
-      const continuum = new CouchContinuum(options)
-      log(`Migrating database '${dbName}' to { q: ${q} }...`)
-      continuum.createReplica().then(function () {
-        return getConsent()
-      }).then((consent) => {
         if (!consent) return log('Could not acquire consent. Exiting...')
         return continuum.replacePrimary().then(() => {
           log('... success!')
