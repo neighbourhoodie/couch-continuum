@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('assert')
+const ProgressBar = require('progress')
 const request = require('request')
 
 const prefix = '[couch-continuum]'
@@ -56,9 +57,37 @@ class CouchContinuum {
 
   _replicate (source, target) {
     return makeRequest({
-      url: [this.url, '_replicate'].join('/'),
-      method: 'POST',
-      json: { source, target }
+      url: [this.url, source].join('/'),
+      json: true
+    }).then((body) => {
+      const total = body.doc_count
+      const text = '[couch-continuum] Replicating (:bar) :percent :etas'
+      const bar = new ProgressBar(text, {
+        incomplete: ' ',
+        width: 20,
+        total
+      })
+      var current = 0
+      const timer = setInterval(() => {
+        makeRequest({
+          url: [this.url, target].join('/'),
+          json: true
+        }).then((body) => {
+          const latest = body.doc_count
+          const delta = latest - current
+          bar.tick(delta)
+          current = latest
+          if (bar.complete) clearInterval(timer)
+        })
+      }, 1000)
+      return makeRequest({
+        url: [this.url, '_replicate'].join('/'),
+        method: 'POST',
+        json: { source, target }
+      }).then(() => {
+        bar.tick(total)
+        clearInterval(timer)
+      })
     })
   }
 
@@ -194,7 +223,19 @@ class CouchContinuum {
         return new Promise((resolve) => {
           // sleep, giving the cluster a chance to sort
           // out the rapid recreation.
-          setTimeout(resolve, 15 * 1000) // 15s
+          const text = '[couch-continuum] Recreating (:bar) :percent :etas'
+          const bar = new ProgressBar(text, {
+            incomplete: ' ',
+            width: 20,
+            total: 150
+          })
+          const timer = setInterval(() => {
+            bar.tick()
+            if (bar.complete) {
+              clearInterval(timer)
+              return resolve()
+            }
+          }, 100)
         })
       })
     }).then(() => {
