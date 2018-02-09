@@ -15,8 +15,15 @@ function makeCallBack (resolve, reject) {
   return (err, res, body) => {
     if (typeof body === 'string') body = JSON.parse(body)
     if (err || body.error) return reject(err || body)
-    else return resolve()
+    else return resolve(body)
   }
+}
+
+function makeRequest (options) {
+  return new Promise((resolve, reject) => {
+    const done = makeCallBack(resolve, reject)
+    request(options, done)
+  })
 }
 
 module.exports =
@@ -32,37 +39,44 @@ class CouchContinuum {
   }
 
   _createDb (dbName) {
-    return new Promise((resolve, reject) => {
-      const done = makeCallBack(resolve, reject)
-      const url = [this.url, dbName].join('/')
-      request({
-        url,
-        method: 'PUT',
-        json: { q: this.q }
-      }, done)
+    return makeRequest({
+      url: [this.url, dbName].join('/'),
+      method: 'PUT',
+      json: { q: this.q }
     })
   }
 
   _destroyDb (dbName) {
-    return new Promise((resolve, reject) => {
-      const done = makeCallBack(resolve, reject)
-      const url = [this.url, dbName].join('/')
-      request({
-        url,
-        method: 'DELETE'
-      }, done)
+    return makeRequest({
+      url: [this.url, dbName].join('/'),
+      method: 'DELETE',
+      json: true
     })
   }
 
   _replicate (source, target) {
-    return new Promise((resolve, reject) => {
-      const done = makeCallBack(resolve, reject)
-      const url = [this.url, '_replicate'].join('/')
-      request({
-        url,
-        method: 'POST',
-        json: { source, target }
-      }, done)
+    return makeRequest({
+      url: [this.url, '_replicate'].join('/'),
+      method: 'POST',
+      json: { source, target }
+    })
+  }
+
+  _verifyReplica () {
+    const getDocCount = (dbName) => {
+      return makeRequest({
+        url: [this.url, dbName].join('/'),
+        json: true
+      }).then((body) => {
+        return body.doc_count
+      })
+    }
+
+    return Promise.all([
+      getDocCount(this.db1),
+      getDocCount(this.db2)
+    ]).then(([docCount1, docCount2]) => {
+      assert.equal(docCount1, docCount2, 'Primary and replica do not have the same number of documents.')
     })
   }
 
@@ -72,15 +86,11 @@ class CouchContinuum {
    * @return {Promise}        Resolves with the database's update sequence.
    */
   _getUpdateSeq (dbName) {
-    return new Promise((resolve, reject) => {
-      request({
-        url: [this.url, dbName].join('/'),
-        json: true
-      }, (err, res, body) => {
-        if (err || body.error) return reject(err || body)
-        const { update_seq } = body
-        return resolve(update_seq)
-      })
+    return makeRequest({
+      url: [this.url, dbName].join('/'),
+      json: true
+    }).then((body) => {
+      return body.update_seq
     })
   }
 
@@ -91,31 +101,21 @@ class CouchContinuum {
    * @return {Promise<Boolean>}   Whether the database is in use.
    */
   _isInUse (dbName) {
-    // collect /_active_tasks
-    return new Promise((resolve, reject) => {
-      request({
+    return Promise.all([
+      makeRequest({
         url: [this.url, '_active_tasks'].join('/'),
         json: true
-      }, (err, res, body) => {
-        if (err || body.error) return reject(err || body)
-        return resolve(body)
+      }),
+      makeRequest({
+        url: [this.url, '_scheduler', 'jobs'].join('/'),
+        json: true
       })
-    }).then((activeTasks) => {
-      // collect /_schedular/jobs
-      return new Promise((resolve, reject) => {
-        request({
-          url: [this.url, '_scheduler', 'jobs'].join('/'),
-          json: true
-        }, (err, res, body) => {
-          if (err || body.error) return reject(err || body)
-          const { jobs } = body
-          return resolve(jobs)
-        })
-      }).then((jobs) => {
-        // verify that the given dbName is not involved
-        jobs.concat(activeTasks).forEach(({ database }) => {
-          assert.notEqual(database, dbName, `${dbName} is still in use.`)
-        })
+    ]).then(([activeTasks, jobsResponse]) => {
+      const { jobs } = jobsResponse
+      // verify that the given dbName is not involved
+      // in any active jobs or tasks
+      jobs.concat(activeTasks).forEach(({ database }) => {
+        assert.notEqual(database, dbName, `${dbName} is still in use.`)
       })
     })
   }
@@ -128,49 +128,55 @@ class CouchContinuum {
   createReplica () {
     let lastSeq1, lastSeq2
     log(`Creating replica ${this.db2}...`)
-    log('[0/4] Checking if primary is in use...')
+    log('[0/5] Checking if primary is in use...')
     return this._isInUse(this.db1).then(() => {
       return this._getUpdateSeq(this.db1).then((seq) => {
         lastSeq1 = seq
       })
     }).then(() => {
-      log('[1/4] Creating temp db:', this.db2)
+      log('[1/5] Creating temp db:', this.db2)
       return this._createDb(this.db2).catch((err) => {
         const exists = (err.error && err.error === 'file_exists')
         if (exists) return true
         else throw err
       })
     }).then(() => {
-      log('[2/4] Beginning replication of primary to temp...')
+      log('[2/5] Beginning replication of primary to temp...')
       return this._replicate(this.db1, this.db2)
     }).then(() => {
-      log('[3/4] Replicated. Verifying replica...')
+      log('[3/5] Verifying primary did not change during replication...')
       return this._getUpdateSeq(this.db1).then((seq) => {
         lastSeq2 = seq
         assert.equal(lastSeq1, lastSeq2, `${this.db1} is still receiving updates. Exiting...`)
       })
     }).then(() => {
-      log('[4/4] Primary copied to replica.')
+      log('[4/5] Verifying primary and replica match...')
+      return this._verifyReplica()
+    }).then(() => {
+      log('[5/5] Primary copied to replica.')
     })
   }
 
   replacePrimary () {
     log(`Replacing primary ${this.db1}...`)
-    log('[0/5] Checking if primary is in use...')
+    log('[0/6] Checking if primary is in use...')
     return this._isInUse(this.db1).then(() => {
-      log('[1/5] Destroying primary...')
+      log('[1/6] Verifying primary and replica match...')
+      return this._verifyReplica()
+    }).then(() => {
+      log('[2/6] Destroying primary...')
       return this._destroyDb(this.db1)
     }).then(() => {
-      log('[2/5] Recreating primary with new settings...')
+      log('[3/6] Recreating primary with new settings...')
       return this._createDb(this.db1)
     }).then(() => {
-      log('[3/5] Beginning replication of temp to primary...')
+      log('[4/6] Beginning replication of temp to primary...')
       return this._replicate(this.db2, this.db1)
     }).then(() => {
-      log('[4/5] Replicated. Destroying temp...')
+      log('[5/6] Replicated. Destroying temp...')
       return this._destroyDb(this.db2)
     }).then(() => {
-      log('[5/5] Primary migrated to new settings.')
+      log('[6/6] Primary migrated to new settings.')
     })
   }
 }

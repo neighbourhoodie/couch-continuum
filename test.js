@@ -53,6 +53,14 @@ describe([name, version].join(' @ '), function () {
     })
   })
 
+  it('should create replicas repeatedly OK', function () {
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica().then(() => {
+      return continuum.createReplica()
+    })
+  })
+
   it('should check if a db is in use', function () {
     const continuum = new CouchContinuum({ couchUrl, dbName, q })
     return continuum._isInUse(dbName)
