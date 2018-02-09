@@ -24,14 +24,20 @@ CouchContinuum works in two parts:
 
 1. Create a replica of a given database (aka "the primary"):
     1. Verify that the primary is not in use.
-    2. Replicate the primary to the replica.
-    3. Verify that the primary was not updated during replication.
-    4. Replica is now complete and verified.
+    2. Create the replica database.
+    3. Replicate the primary to the replica.
+    4. Verify that the primary was not updated during replication.
+    5. Verify that the primary and replica match.
+    6. Replica is now complete and verified.
 2. Replace the primary with a replica:
     1. Verify that the primary is not in use.
-    2. Destroy the primary and re-create it with new settings.
-    3. Replicate the replica to the primary.
-    4. Primary has now successfully migrated to new settings.
+    2. Verify that the primary and the replica match.
+    3. Destroy the primary.
+    4. Re-create the primary with new settings.
+    5. Set the primary as unavailable.
+    6. Replicate the replica to the primary.
+    7. Set the primary as available again.
+    8. Primary has now successfully migrated to new settings.
 
 The process exits successfully once the database has been completely migrated. The first part of migration -- creating a replica -- is not destructive, while the second part is. As such, the program asks the user to explicitly consent to replacing the primary.
 
@@ -63,11 +69,10 @@ Migrate a database to new settings.
 
 Commands:
   couch-continuum start            Migrate a database to new settings. [default]
-  couch-continuum create-replica   Create a replica of the given primary. (step
-                                   one)               [aliases: create, replica]
+  couch-continuum create-replica   Create a replica of the given primary.
+                                                      [aliases: create, replica]
   couch-continuum replace-primary  Replace the given primary with the indicated
-                                   replica. (step two)
-                                                     [aliases: replace, primary]
+                                   replica.          [aliases: replace, primary]
 
 Options:
   --version       Show version number                                  [boolean]
@@ -89,8 +94,8 @@ $ couch-continuum -n a -q 4 -u http://... -v
 [couch-continuum] Migrating database 'a' to { q: 4 }...
 [couch-continuum] Creating replica a_temp_copy...
 [couch-continuum] [0/5] Checking if primary is in use...
-[couch-continuum] [1/5] Creating temp db: a_temp_copy
-[couch-continuum] [2/5] Beginning replication of primary to temp...
+[couch-continuum] [1/5] Creating replica db: a_temp_copy
+[couch-continuum] [2/5] Beginning replication of primary to replica...
 [couch-continuum] [3/5] Verifying primary did not change during replication...
 [couch-continuum] [4/5] Verifying primary and replica match...
 [couch-continuum] [5/5] Primary copied to replica.
@@ -101,8 +106,8 @@ Ready to replace the primary with the replica. Continue? [y/N] y
 [couch-continuum] [2/8] Destroying primary...
 [couch-continuum] [3/8] Recreating primary with new settings...
 [couch-continuum] [4/8] Setting primary to unavailable.
-[couch-continuum] [5/8] Beginning replication of temp to primary...
-[couch-continuum] [6/8] Replicated. Destroying temp...
+[couch-continuum] [5/8] Beginning replication of replica to primary...
+[couch-continuum] [6/8] Replicated. Destroying replica...
 [couch-continuum] [7/8] Setting primary to available.
 [couch-continuum] [8/8] Primary migrated to new settings.
 [couch-continuum] ... success!

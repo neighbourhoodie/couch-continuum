@@ -49,7 +49,7 @@ require('yargs')
   .command({
     command: 'create-replica',
     aliases: ['create', 'replica'],
-    description: 'Create a replica of the given primary. (step one)',
+    description: 'Create a replica of the given primary.',
     handler: function (argv) {
       const { couchUrl, dbName, copyName, q, verbose } = argv
       if (verbose) process.env.LOG = true
@@ -64,7 +64,7 @@ require('yargs')
   .command({
     command: 'replace-primary',
     aliases: ['replace', 'primary'],
-    description: 'Replace the given primary with the indicated replica. (step two)',
+    description: 'Replace the given primary with the indicated replica.',
     handler: function (argv) {
       const { couchUrl, dbName, copyName, q, verbose } = argv
       if (verbose) process.env.LOG = true

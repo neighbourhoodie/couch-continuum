@@ -156,14 +156,14 @@ class CouchContinuum {
         lastSeq1 = seq
       })
     }).then(() => {
-      log('[1/5] Creating temp db:', this.db2)
+      log('[1/5] Creating replica db:', this.db2)
       return this._createDb(this.db2).catch((err) => {
         const exists = (err.error && err.error === 'file_exists')
         if (exists) return true
         else throw err
       })
     }).then(() => {
-      log('[2/5] Beginning replication of primary to temp...')
+      log('[2/5] Beginning replication of primary to replica...')
       return this._replicate(this.db1, this.db2)
     }).then(() => {
       log('[3/5] Verifying primary did not change during replication...')
@@ -195,10 +195,10 @@ class CouchContinuum {
       log('[4/8] Setting primary to unavailable.')
       return this._setUnavailable()
     }).then(() => {
-      log('[5/8] Beginning replication of temp to primary...')
+      log('[5/8] Beginning replication of replica to primary...')
       return this._replicate(this.db2, this.db1)
     }).then(() => {
-      log('[6/8] Replicated. Destroying temp...')
+      log('[6/8] Replicated. Destroying replica...')
       return this._destroyDb(this.db2)
     }).then(() => {
       log('[7/8] Setting primary to available.')
