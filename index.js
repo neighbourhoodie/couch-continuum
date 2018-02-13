@@ -29,13 +29,14 @@ function makeRequest (options) {
 
 module.exports =
 class CouchContinuum {
-  constructor ({ couchUrl, dbName, copyName, q }) {
+  constructor ({ couchUrl, dbName, copyName, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     assert(q, 'The Continuum requires a desired "q" setting.')
     this.url = couchUrl
     this.db1 = dbName
     this.db2 = copyName || (this.db1 + '_temp_copy')
+    this.interval = interval || 1000
     this.q = q
   }
 
@@ -79,7 +80,7 @@ class CouchContinuum {
           current = latest
           if (bar.complete) clearInterval(timer)
         })
-      }, 1000)
+      }, this.interval)
       return makeRequest({
         url: [this.url, '_replicate'].join('/'),
         method: 'POST',

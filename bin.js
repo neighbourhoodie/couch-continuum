@@ -96,6 +96,11 @@ require('yargs')
       description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
       type: 'string'
     },
+    interval: {
+      alias: 'i',
+      description: 'How often (in milliseconds) to check replication tasks for progress.',
+      default: 1000
+    },
     q: {
       description: 'The desired "q" value for the new database.',
       required: true,
