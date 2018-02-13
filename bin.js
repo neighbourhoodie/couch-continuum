@@ -26,7 +26,13 @@ function getConsent () {
 }
 
 function catchError (error) {
-  console.trace(error)
+  if (error.error) {
+    if (error.error === 'not_found') {
+      log('ERROR')
+      return log('Primary database does not exist. There is nothing to migrate.')
+    }
+  }
+  return log('Unexpected error: %j', error)
 }
 
 require('yargs')
