@@ -6,27 +6,10 @@
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation. For example:
 
 ```bash
-$ couch-continuum -q 6 -n DB_NAME -u COUCH_URL
-[couch-continuum] Migrating database DB_NAME to { q: 6 }...
-[couch-continuum] ...success!
-```
-
-You can also use it as a [nodejs](http://nodejs.org/) module:
-
-```javascript
-const CouchContinuum = require('couch-continuum')
-
-// the complete URL (including credentials) to the CouchDB cluster
-const couchUrl
-// the name of the database to migrate
-const dbName = '...'
-// a number for the database's new quorum setting
-const q = 8
-
-CouchContinuum.start({ couchUrl, dbName, q }, function (err) {
-	// Reports an error if any occurred.
-	// Otherwise, the DB was successfully migrated!
-})
+$ COUCH_URL=http://$USER:$PASS@localhost:5984 couch-continuum -n test-database -q 4
+[couch-continuum] Migrating database 'test-database' to { q: 4 }...
+Ready to replace the primary with the replica. Continue? [y/N] y
+[couch-continuum] ... success!
 ```
 
 ## Why?
@@ -37,17 +20,30 @@ Some database settings can only be set when the database is created. In order to
 
 **NOTE: CouchContinuum's approach involves some downtime where the database being migrated is unavailable. Use accordingly!**
 
-CouchContinuum works like this:
+CouchContinuum works in two parts:
 
-1. Given a database A1, creates database A2 with desired settings.
-2. Replicates A1 to A2.
-3. Delete A1
-4. Create A1 with desired settings.
-5. Replicate A2 to A1.
+1. Create a replica of a given database (aka "the primary"):
+    1. Verify that the primary is not in use.
+    2. Create the replica database.
+    3. Replicate the primary to the replica.
+    4. Verify that the primary was not updated during replication.
+    5. Verify that the primary and replica match.
+    6. Replica is now complete and verified.
+2. Replace the primary with a replica:
+    1. Verify that the primary is not in use.
+    2. Verify that the primary and the replica match.
+    3. Destroy the primary.
+    4. Re-create the primary with new settings.
+    5. Set the primary as unavailable.
+    6. Replicate the replica to the primary.
+    7. Set the primary as available again.
+    8. Primary has now successfully migrated to new settings.
 
-The process exits successfully once the database has been completely migrated. Faced with any kind of failure, the process will attempt to roll affected databases back to their pre-migration state. If the tool is halted prematurely, it will resume the migration if run again.
+The process exits successfully once the database has been completely migrated. The first part of migration -- creating a replica -- is not destructive, while the second part is. As such, the program asks the user to explicitly consent to replacing the primary.
 
-While the process works, consider the affected database(s) unavailable: reads and writes during this time may return inconsistent or incorrect information about documents in the database. To signal that the database is unavailable, the process sets `/{db}/_local/in-maintenance` to `{ down: true }` and deletes the document once it exits. Application components that depend on the database should poll for the existence of that document and back off when it exists.
+During the migration process, consider the affected database(s) unavailable: reads during this time may return inconsistent or incorrect information about documents in the database. If the program detects that the primary is still receiving updates, it will exit with an error. **Ensure nobody is using a database before migrating it!**
+
+While the database is being migrated, it will either not exist, or have a local document accessible at `/{dbName}/_local/in-maintenance` that contains the body `{ down: true }`. Application components that rely on the database should detect either of these states and back off accordingly.
 
 ## Installation
 
@@ -64,34 +60,60 @@ Now you can use the `couch-continuum` command. Run `couch-continuum -h` to see u
 
 ## Usage
 
-```bash
+```
+$ couch-continuum -h
+
 couch-continuum
+
+Migrate a database to new settings.
+
+Commands:
+  couch-continuum start            Migrate a database to new settings. [default]
+  couch-continuum create-replica   Create a replica of the given primary.
+                                                      [aliases: create, replica]
+  couch-continuum replace-primary  Replace the given primary with the indicated
+                                   replica.          [aliases: replace, primary]
 
 Options:
   --version       Show version number                                  [boolean]
-  --config        Path to JSON config file
   --couchUrl, -u  The URL of the CouchDB cluster to act upon.
-                                              [default: "http://localhost:5984"]
+                               [default: "http://admin:password@localhost:5984"]
   --dbName, -n    The name of the database to modify.        [string] [required]
+  --copyName, -c  The name of the database to use as a replica. Defaults to
+                  {dbName}_temp_copy                                    [string]
   -q              The desired "q" value for the new database.[number] [required]
   --verbose, -v   Enable verbose logging.                              [boolean]
+  --config        Path to JSON config file
   -h, --help      Show help                                            [boolean]
 ```
 
 The verbose output will inform you of each stage of the tool's operations. For example:
 
 ```
-[couch-continuum] Migrating database 'a' to { q: 2 }...
-[couch-continuum] Creating temp db: a_temp_copy
-[couch-continuum] Setting primary db as unavailable...
-[couch-continuum] Beginning replication of primary to temp...
-[couch-continuum] Replicated. Destroying primary...
-[couch-continuum] Recreating primary with new settings...
-[couch-continuum] Setting primary as unavailable (again)...
-[couch-continuum] Beginning replication of temp to primary...
-[couch-continuum] Replicated. Destroying temp...
-[couch-continuum] Setting primary as available...
-[couch-continuum] ...success!
+$ couch-continuum -n a -q 4 -u http://... -v
+[couch-continuum] Migrating database 'a' to { q: 4 }...
+[couch-continuum] Creating replica a_temp_copy...
+[couch-continuum] [0/5] Checking if primary is in use...
+[couch-continuum] [1/5] Creating replica db: a_temp_copy
+[couch-continuum] [2/5] Beginning replication of primary to replica...
+[couch-continuum] Replicating (====================) 100% 0.0s
+[couch-continuum] [3/5] Verifying primary did not change during replication...
+[couch-continuum] [4/5] Verifying primary and replica match...
+[couch-continuum] [5/5] Primary copied to replica.
+Ready to replace the primary with the replica. Continue? [y/N] y
+[couch-continuum] Replacing primary a...
+[couch-continuum] [0/8] Checking if primary is in use...
+[couch-continuum] [1/8] Verifying primary and replica match...
+[couch-continuum] [2/8] Destroying primary...
+[couch-continuum] [3/8] Recreating primary with new settings...
+[couch-continuum] Recreating (====================) 100% 0.0s
+[couch-continuum] [4/8] Setting primary to unavailable.
+[couch-continuum] [5/8] Beginning replication of replica to primary...
+[couch-continuum] Replicating (====================) 100% 0.0s
+[couch-continuum] [6/8] Replicated. Destroying replica...
+[couch-continuum] [7/8] Setting primary to available.
+[couch-continuum] [8/8] Primary migrated to new settings.
+[couch-continuum] ... success!
 ```
 
 ## Why "Continuum"?

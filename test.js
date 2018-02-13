@@ -46,32 +46,24 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should work', function () {
+    this.timeout(30 * 1000) // 30s
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
-    return continuum.start()
-  })
-
-  it('should roll back changes', function () {
-    const options = { couchUrl, dbName, q }
-    const continuum = new CouchContinuum(options)
-    return continuum._createDb(continuum.db2).then(() => {
-      return continuum._replicate(dbName, continuum.db2)
-    }).then(() => {
-      return continuum._destroyDb(dbName)
-    }).then(() => {
-      return continuum.start()
+    return continuum.createReplica().then(() => {
+      return continuum.replacePrimary()
     })
   })
 
-  it('should handle resume', function () {
+  it('should create replicas repeatedly OK', function () {
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
-    return continuum._setUnavailable(dbName).then(() => {
-      return continuum._createDb(continuum.db2).then(() => {
-        return continuum._replicate(dbName, continuum.db2)
-      })
-    }).then(() => {
-      return continuum.start()
+    return continuum.createReplica().then(() => {
+      return continuum.createReplica()
     })
+  })
+
+  it('should check if a db is in use', function () {
+    const continuum = new CouchContinuum({ couchUrl, dbName, q })
+    return continuum._isInUse(dbName)
   })
 })
