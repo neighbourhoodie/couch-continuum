@@ -6,6 +6,7 @@ const request = require('request')
 const { name, version } = require('./package.json')
 
 describe([name, version].join(' @ '), function () {
+  this.timeout(1000 * 20)
   const couchUrl = process.env.COUCH_URL || 'http://localhost:5984'
   const dbName = 'test-continuum'
   const q = 4
@@ -45,9 +46,24 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should work', function () {
-    this.timeout(1000 * 10) // 5s
+    this.timeout(30 * 1000) // 30s
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
-    return continuum.start()
+    return continuum.createReplica().then(() => {
+      return continuum.replacePrimary()
+    })
+  })
+
+  it('should create replicas repeatedly OK', function () {
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica().then(() => {
+      return continuum.createReplica()
+    })
+  })
+
+  it('should check if a db is in use', function () {
+    const continuum = new CouchContinuum({ couchUrl, dbName, q })
+    return continuum._isInUse(dbName)
   })
 })
