@@ -32,7 +32,7 @@ CouchContinuum works in two parts:
 2. Replace the primary with a replica:
     1. Verify that the primary is not in use.
     2. Verify that the primary and the replica match.
-    3. Destroy the primary.
+    3. Destroy the primary, leaving it unavailable until step 7.
     4. Re-create the primary with new settings.
     5. Set the primary as unavailable.
     6. Replicate the replica to the primary.
