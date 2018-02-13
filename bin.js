@@ -25,6 +25,10 @@ function getConsent () {
   })
 }
 
+function catchError (error) {
+  console.trace(error)
+}
+
 require('yargs')
   .command({
     command: 'start',
@@ -43,7 +47,7 @@ require('yargs')
         return continuum.replacePrimary().then(() => {
           log('... success!')
         })
-      })
+      }).catch(catchError)
     }
   })
   .command({
@@ -58,7 +62,7 @@ require('yargs')
       log(`Creating replica of ${continuum.db1} at ${continuum.db2}`)
       continuum.createReplica().then(() => {
         log('... success!')
-      })
+      }).catch(catchError)
     }
   })
   .command({
@@ -76,7 +80,7 @@ require('yargs')
         return continuum.replacePrimary().then(() => {
           log('... success!')
         })
-      })
+      }).catch(catchError)
     }
   })
   .options({
