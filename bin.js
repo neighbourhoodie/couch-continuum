@@ -26,10 +26,12 @@ function getConsent () {
 }
 
 function catchError (error) {
+  log('ERROR')
   if (error.error) {
     if (error.error === 'not_found') {
-      log('ERROR')
       return log('Primary database does not exist. There is nothing to migrate.')
+    } else if (error.error === 'unauthorized') {
+      return log('Could not authenticate with CouchDB. Are the credentials correct?')
     }
   }
   return log('Unexpected error: %j', error)
