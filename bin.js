@@ -10,6 +10,13 @@ function log () {
   console.log.apply(console, arguments)
 }
 
+function getContinuum (argv) {
+  const { couchUrl, dbName, copyName, interval, q, verbose } = argv
+  if (verbose) process.env.LOG = true
+  const options = { couchUrl, dbName, copyName, interval, q }
+  return new CouchContinuum(options)
+}
+
 function getConsent () {
   const question = 'Ready to replace the primary with the replica. Continue? [y/N] '
   const rl = readline.createInterface({
@@ -25,16 +32,25 @@ function getConsent () {
   })
 }
 
+function catchError (error) {
+  log('ERROR')
+  if (error.error) {
+    if (error.error === 'not_found') {
+      return log('Primary database does not exist. There is nothing to migrate.')
+    } else if (error.error === 'unauthorized') {
+      return log('Could not authenticate with CouchDB. Are the credentials correct?')
+    }
+  }
+  return log('Unexpected error: %j', error)
+}
+
 require('yargs')
   .command({
     command: 'start',
     aliases: ['$0'],
     description: 'Migrate a database to new settings.',
     handler: function (argv) {
-      const { couchUrl, dbName, copyName, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      const options = { couchUrl, dbName, copyName, q }
-      const continuum = new CouchContinuum(options)
+      const continuum = getContinuum(argv)
       log(`Migrating database '${dbName}' to { q: ${q} }...`)
       continuum.createReplica().then(function () {
         return getConsent()
@@ -43,7 +59,7 @@ require('yargs')
         return continuum.replacePrimary().then(() => {
           log('... success!')
         })
-      })
+      }).catch(catchError)
     }
   })
   .command({
@@ -51,14 +67,11 @@ require('yargs')
     aliases: ['create', 'replica'],
     description: 'Create a replica of the given primary.',
     handler: function (argv) {
-      const { couchUrl, dbName, copyName, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      const options = { couchUrl, dbName, copyName, q }
-      const continuum = new CouchContinuum(options)
+      const continuum = getContinuum(argv)
       log(`Creating replica of ${continuum.db1} at ${continuum.db2}`)
       continuum.createReplica().then(() => {
         log('... success!')
-      })
+      }).catch(catchError)
     }
   })
   .command({
@@ -66,17 +79,14 @@ require('yargs')
     aliases: ['replace', 'primary'],
     description: 'Replace the given primary with the indicated replica.',
     handler: function (argv) {
-      const { couchUrl, dbName, copyName, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      const options = { couchUrl, dbName, copyName, q }
-      const continuum = new CouchContinuum(options)
+      const continuum = getContinuum(argv)
       log(`Replacing primary ${continuum.db1} with ${continuum.db2} and settings { q:${q} }`)
       getConsent().then((consent) => {
         if (!consent) return log('Could not acquire consent. Exiting...')
         return continuum.replacePrimary().then(() => {
           log('... success!')
         })
-      })
+      }).catch(catchError)
     }
   })
   .options({
@@ -95,6 +105,11 @@ require('yargs')
       alias: 'c',
       description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
       type: 'string'
+    },
+    interval: {
+      alias: 'i',
+      description: 'How often (in milliseconds) to check replication tasks for progress.',
+      default: 1000
     },
     q: {
       description: 'The desired "q" value for the new database.',

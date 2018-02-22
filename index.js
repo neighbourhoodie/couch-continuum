@@ -29,14 +29,21 @@ function makeRequest (options) {
 
 module.exports =
 class CouchContinuum {
-  constructor ({ couchUrl, dbName, copyName, q }) {
+  constructor ({ couchUrl, dbName, copyName, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     assert(q, 'The Continuum requires a desired "q" setting.')
     this.url = couchUrl
-    this.db1 = dbName
-    this.db2 = copyName || (this.db1 + '_temp_copy')
+    this.db1 = encodeURIComponent(dbName)
+    this.db2 = encodeURIComponent(copyName) || (this.db1 + '_temp_copy')
+    this.interval = interval || 1000
     this.q = q
+    log('Created new continuum: %j', {
+      db1: this.db1,
+      db2: this.db2,
+      interval: this.interval,
+      q: this.q
+    })
   }
 
   _createDb (dbName) {
@@ -61,6 +68,7 @@ class CouchContinuum {
       json: true
     }).then((body) => {
       const total = body.doc_count
+      if (total === 0) return Promise.resolve()
       const text = '[couch-continuum] Replicating (:bar) :percent :etas'
       const bar = new ProgressBar(text, {
         incomplete: ' ',
@@ -78,8 +86,10 @@ class CouchContinuum {
           bar.tick(delta)
           current = latest
           if (bar.complete) clearInterval(timer)
+        }).catch((error) => {
+          console.error(error)
         })
-      }, 1000)
+      }, this.interval)
       return makeRequest({
         url: [this.url, '_replicate'].join('/'),
         method: 'POST',
