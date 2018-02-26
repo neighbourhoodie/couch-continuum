@@ -143,7 +143,7 @@ require('yargs')
           return new CouchContinuum(options)
         })
         // create replicas and migrate one at a time
-        const question = `About to migrate ${dbNames.length} databases. Proceed? [y/N]`
+        const question = `About to migrate ${dbNames.length} databases. Proceed? [y/N] `
         return getConsent(question).then((consent) => {
           if (!consent) return log('Could not acquire consent. Exiting...')
           return continuums.map((continuum) => {
