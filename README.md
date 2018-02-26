@@ -6,9 +6,12 @@
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation. For example:
 
 ```bash
-$ COUCH_URL=http://$USER:$PASS@localhost:5984 couch-continuum -n test-database -q 4
-[couch-continuum] Migrating database 'test-database' to { q: 4 }...
+$ couch-continuum -n test-database -q 4 -u http://$USER:$PASS@localhost:5984
+[couch-continuum] Migrating database 'test-database' to new settings { q: 4 }...
+[couch-continuum] Replicating (====================) 100% 0.0s
 Ready to replace the primary with the replica. Continue? [y/N] y
+[couch-continuum] Recreating (====================) 100% 0.0s
+[couch-continuum] Replicating (====================) 100% 0.0s
 [couch-continuum] ... success!
 ```
 
@@ -73,17 +76,21 @@ Commands:
                                                       [aliases: create, replica]
   couch-continuum replace-primary  Replace the given primary with the indicated
                                    replica.          [aliases: replace, primary]
+  couch-continuum migrate-all      Migrate all non-special databases to new
+                                   settings.                      [aliases: all]
 
 Options:
   --version       Show version number                                  [boolean]
   --couchUrl, -u  The URL of the CouchDB cluster to act upon.
                                [default: "http://admin:password@localhost:5984"]
-  --dbName, -n    The name of the database to modify.        [string] [required]
-  --copyName, -c  The name of the database to use as a replica. Defaults to
-                  {dbName}_temp_copy                                    [string]
+  --interval, -i  How often (in milliseconds) to check replication tasks for
+                  progress.                                      [default: 1000]
   -q              The desired "q" value for the new database.[number] [required]
   --verbose, -v   Enable verbose logging.                              [boolean]
   --config        Path to JSON config file
+  --dbName, -n    The name of the database to modify.        [string] [required]
+  --copyName, -c  The name of the database to use as a replica. Defaults to
+                  {dbName}_temp_copy                                    [string]
   -h, --help      Show help                                            [boolean]
 ```
 
