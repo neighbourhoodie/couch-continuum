@@ -29,13 +29,24 @@ function makeRequest (options) {
 
 module.exports =
 class CouchContinuum {
+  static allDbs (url) {
+    return makeRequest({
+      url: [url, '_all_dbs'].join('/'),
+      json: true
+    }).then((body) => {
+      return body.filter((dbName) => {
+        return (dbName[0] !== '_') // ignore special dbs
+      })
+    })
+  }
+
   constructor ({ couchUrl, dbName, copyName, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     assert(q, 'The Continuum requires a desired "q" setting.')
     this.url = couchUrl
     this.db1 = encodeURIComponent(dbName)
-    this.db2 = encodeURIComponent(copyName) || (this.db1 + '_temp_copy')
+    this.db2 = (copyName && encodeURIComponent(copyName)) || (this.db1 + '_temp_copy')
     this.interval = interval || 1000
     this.q = q
     log('Created new continuum: %j', {
