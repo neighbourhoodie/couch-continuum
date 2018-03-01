@@ -2,6 +2,7 @@
 'use strict'
 
 const CouchContinuum = require('.')
+const fs = require('fs')
 const readline = require('readline')
 
 /*
@@ -137,28 +138,45 @@ require('yargs')
       const { couchUrl, interval, q, verbose } = argv
       if (verbose) process.env.LOG = true
       CouchContinuum.allDbs(couchUrl).then((dbNames) => {
+        // skip already done
+        var lastDb = '\u0000'
+        try {
+          lastDb = fs.readFileSync('.progress', 'utf-8')
+        } catch (e) {
+          console.log(e.code)
+          if (e.code !== 'ENOENT') throw e
+        }
+        return dbNames.filter((dbName) => {
+          return dbName > lastDb
+        })
+      }).then((dbNames) => {
         // create continuums for each db
-        const continuums = dbNames.map((dbName) => {
+        return dbNames.map((dbName) => {
           const options = { couchUrl, dbName, interval, q }
           return new CouchContinuum(options)
         })
-        // create replicas and migrate one at a time
-        const question = `About to migrate ${dbNames.length} databases. Proceed? [y/N] `
-        return getConsent(question).then((consent) => {
-          if (!consent) return log('Could not acquire consent. Exiting...')
+      }).then((continuums) => {
+        return continuums.map((continuum) => {
+          return () => {
+            return continuum.createReplica()
+          }
+        }).reduce((a, b) => {
+          return a.then(b)
+        }, Promise.resolve()).then(() => {
           return continuums.map((continuum) => {
-            return function () {
-              log(`Migrating database '${continuum.db1}' to new settings: { q: ${q} }...`)
-              return continuum.createReplica().then(function () {
-                return continuum.replacePrimary().then(() => {
-                  log('... success!')
-                })
+            return () => {
+              return continuum.replacePrimary().then(() => {
+                // mark checkpoint
+                fs.writeFileSync('.progress', continuum.db1, 'utf-8')
               })
             }
           }).reduce((a, b) => {
             return a.then(b)
           }, Promise.resolve())
         })
+      }).then(() => {
+        // once all done, remove the progress marker
+        fs.unlinkSync('.progress')
       })
     }
   })

@@ -35,7 +35,9 @@ class CouchContinuum {
       json: true
     }).then((body) => {
       return body.filter((dbName) => {
-        return (dbName[0] !== '_') // ignore special dbs
+        const isSpecial = (dbName[0] === '_') // ignore special dbs
+        const isReplica = dbName.indexOf('_temp_copy') > -1
+        return !isSpecial && !isReplica
       })
     })
   }
@@ -126,7 +128,7 @@ class CouchContinuum {
       getDocCount(this.db1),
       getDocCount(this.db2)
     ]).then(([docCount1, docCount2]) => {
-      assert.equal(docCount1, docCount2, 'Primary and replica do not have the same number of documents.')
+      assert(docCount1 <= docCount2, 'Primary and replica do not have the same number of documents.')
     })
   }
 
@@ -219,7 +221,7 @@ class CouchContinuum {
       log('[3/5] Verifying primary did not change during replication...')
       return this._getUpdateSeq(this.db1).then((seq) => {
         lastSeq2 = seq
-        assert.equal(lastSeq1, lastSeq2, `${this.db1} is still receiving updates. Exiting...`)
+        assert(lastSeq1 <= lastSeq2, `${this.db1} is still receiving updates. Exiting...`)
       })
     }).then(() => {
       log('[4/5] Verifying primary and replica match...')
