@@ -4,6 +4,10 @@
 const CouchContinuum = require('.')
 const readline = require('readline')
 
+/*
+HELPERS
+ */
+
 const prefix = '[couch-continuum]'
 function log () {
   arguments[0] = [prefix, arguments[0]].join(' ')
@@ -17,8 +21,8 @@ function getContinuum (argv) {
   return new CouchContinuum(options)
 }
 
-function getConsent () {
-  const question = 'Ready to replace the primary with the replica. Continue? [y/N] '
+function getConsent (question) {
+  question = question || 'Ready to replace the primary with the replica. Continue? [y/N] '
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -36,22 +40,43 @@ function catchError (error) {
   log('ERROR')
   if (error.error) {
     if (error.error === 'not_found') {
-      return log('Primary database does not exist. There is nothing to migrate.')
+      log('Primary database does not exist. There is nothing to migrate.')
     } else if (error.error === 'unauthorized') {
-      return log('Could not authenticate with CouchDB. Are the credentials correct?')
+      log('Could not authenticate with CouchDB. Are the credentials correct?')
     }
+  } else {
+    log('Unexpected error: %j', error)
   }
-  return log('Unexpected error: %j', error)
+  process.exit(1)
 }
+
+/*
+MAIN
+ */
 
 require('yargs')
   .command({
     command: 'start',
     aliases: ['$0'],
     description: 'Migrate a database to new settings.',
+    builder: function (yargs) {
+      yargs.options({
+        dbName: {
+          alias: 'n',
+          description: 'The name of the database to modify.',
+          required: true,
+          type: 'string'
+        },
+        copyName: {
+          alias: 'c',
+          description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
+          type: 'string'
+        }
+      })
+    },
     handler: function (argv) {
       const continuum = getContinuum(argv)
-      log(`Migrating database '${dbName}' to { q: ${q} }...`)
+      log(`Migrating database '${argv.dbName}' to new settings { q: ${argv.q} }...`)
       continuum.createReplica().then(function () {
         return getConsent()
       }).then((consent) => {
@@ -66,6 +91,21 @@ require('yargs')
     command: 'create-replica',
     aliases: ['create', 'replica'],
     description: 'Create a replica of the given primary.',
+    builder: function (yargs) {
+      yargs.options({
+        dbName: {
+          alias: 'n',
+          description: 'The name of the database to modify.',
+          required: true,
+          type: 'string'
+        },
+        copyName: {
+          alias: 'c',
+          description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
+          type: 'string'
+        }
+      })
+    },
     handler: function (argv) {
       const continuum = getContinuum(argv)
       log(`Creating replica of ${continuum.db1} at ${continuum.db2}`)
@@ -80,7 +120,7 @@ require('yargs')
     description: 'Replace the given primary with the indicated replica.',
     handler: function (argv) {
       const continuum = getContinuum(argv)
-      log(`Replacing primary ${continuum.db1} with ${continuum.db2} and settings { q:${q} }`)
+      log(`Replacing primary ${continuum.db1} with ${continuum.db2} and settings { q:${continuum.q} }`)
       getConsent().then((consent) => {
         if (!consent) return log('Could not acquire consent. Exiting...')
         return continuum.replacePrimary().then(() => {
@@ -89,22 +129,44 @@ require('yargs')
       }).catch(catchError)
     }
   })
+  .command({
+    command: 'migrate-all',
+    aliases: ['all'],
+    description: 'Migrate all non-special databases to new settings.',
+    handler: function (argv) {
+      const { couchUrl, interval, q, verbose } = argv
+      if (verbose) process.env.LOG = true
+      CouchContinuum.allDbs(couchUrl).then((dbNames) => {
+        // create continuums for each db
+        const continuums = dbNames.map((dbName) => {
+          const options = { couchUrl, dbName, interval, q }
+          return new CouchContinuum(options)
+        })
+        // create replicas and migrate one at a time
+        const question = `About to migrate ${dbNames.length} databases. Proceed? [y/N] `
+        return getConsent(question).then((consent) => {
+          if (!consent) return log('Could not acquire consent. Exiting...')
+          return continuums.map((continuum) => {
+            return function () {
+              log(`Migrating database '${continuum.db1}' to new settings: { q: ${q} }...`)
+              return continuum.createReplica().then(function () {
+                return continuum.replacePrimary().then(() => {
+                  log('... success!')
+                })
+              })
+            }
+          }).reduce((a, b) => {
+            return a.then(b)
+          }, Promise.resolve())
+        })
+      })
+    }
+  })
   .options({
     couchUrl: {
       alias: 'u',
       description: 'The URL of the CouchDB cluster to act upon.',
       default: process.env.COUCH_URL || 'http://localhost:5984'
-    },
-    dbName: {
-      alias: 'n',
-      description: 'The name of the database to modify.',
-      required: true,
-      type: 'string'
-    },
-    copyName: {
-      alias: 'c',
-      description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
-      type: 'string'
     },
     interval: {
       alias: 'i',

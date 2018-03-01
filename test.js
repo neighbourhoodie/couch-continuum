@@ -45,6 +45,15 @@ describe([name, version].join(' @ '), function () {
     assert(CouchContinuum)
   })
 
+  it('should retrieve all non-special dbs', function () {
+    CouchContinuum.allDbs(couchUrl).then((dbNames) => {
+      assert(dbNames.length > 0)
+      dbNames.forEach((dbName) => {
+        assert.notEqual(dbName[0], '_')
+      })
+    })
+  })
+
   it('should work', function () {
     this.timeout(30 * 1000) // 30s
     const options = { couchUrl, dbName, q }
