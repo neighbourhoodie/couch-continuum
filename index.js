@@ -100,7 +100,7 @@ class CouchContinuum {
           current = latest
           if (bar.complete) clearInterval(timer)
         }).catch((error) => {
-          console.error(error)
+          if (error) console.error(error)
         })
       }, this.interval)
       return makeRequest({

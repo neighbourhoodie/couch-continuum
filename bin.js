@@ -143,7 +143,6 @@ require('yargs')
         try {
           lastDb = fs.readFileSync('.progress', 'utf-8')
         } catch (e) {
-          console.log(e.code)
           if (e.code !== 'ENOENT') throw e
         }
         return dbNames.filter((dbName) => {
@@ -158,6 +157,7 @@ require('yargs')
       }).then((continuums) => {
         return continuums.map((continuum) => {
           return () => {
+            log('Creating replica of "%s"', continuum.db1)
             return continuum.createReplica()
           }
         }).reduce((a, b) => {
@@ -165,6 +165,7 @@ require('yargs')
         }, Promise.resolve()).then(() => {
           return continuums.map((continuum) => {
             return () => {
+              log('Replacing primary "%s" with replica "%s"', continuum.db1, continuum.db2)
               return continuum.replacePrimary().then(() => {
                 // mark checkpoint
                 fs.writeFileSync('.progress', continuum.db1, 'utf-8')
@@ -177,6 +178,7 @@ require('yargs')
       }).then(() => {
         // once all done, remove the progress marker
         fs.unlinkSync('.progress')
+        log('Success! Migration complete.')
       })
     }
   })
