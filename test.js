@@ -54,20 +54,20 @@ describe([name, version].join(' @ '), function () {
     })
   })
 
-  it('should work', function () {
-    this.timeout(30 * 1000) // 30s
-    const options = { couchUrl, dbName, q }
-    const continuum = new CouchContinuum(options)
-    return continuum.createReplica().then(() => {
-      return continuum.replacePrimary()
-    })
-  })
-
   it('should create replicas repeatedly OK', function () {
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
     return continuum.createReplica().then(() => {
       return continuum.createReplica()
+    })
+  })
+
+  it('should replicate and replace a primary', function () {
+    this.timeout(30 * 1000) // 30s
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica().then(() => {
+      return continuum.replacePrimary()
     })
   })
 
