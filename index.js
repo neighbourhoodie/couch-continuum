@@ -63,7 +63,8 @@ class CouchContinuum {
     return makeRequest({
       url: [this.url, dbName].join('/'),
       method: 'PUT',
-      json: { q: this.q }
+      qs: { q: this.q },
+      json: true
     })
   }
 
