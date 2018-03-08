@@ -6,7 +6,7 @@ const path = require('path')
 const ProgressBar = require('progress')
 const request = require('request')
 
-const checkpoint = path.join(__dirname, '.progress')
+const checkpoint = path.join(__dirname, '.checkpoint')
 const prefix = '[couch-continuum]'
 function log () {
   if (process.env.DEBUG || process.env.LOG) {
