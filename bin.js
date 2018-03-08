@@ -38,16 +38,15 @@ function getConsent (question) {
 
 function catchError (error) {
   log('ERROR')
-  if (error.error) {
-    if (error.error === 'not_found') {
-      log('Primary database does not exist. There is nothing to migrate.')
-    } else if (error.error === 'unauthorized') {
-      log('Could not authenticate with CouchDB. Are the credentials correct?')
-    }
+  if (error.error === 'not_found') {
+    log('Primary database does not exist. There is nothing to migrate.')
+  } else if (error.error === 'unauthorized') {
+    log('Could not authenticate with CouchDB. Are the credentials correct?')
+  } else if (error.code === 'EACCES') {
+    log('Could not access the checkpoint document. Are you running as a different user?')
   } else {
     log('Unexpected error: %j', error)
   }
-  console.trace(error)
   process.exit(1)
 }
 
