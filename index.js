@@ -1,9 +1,12 @@
 'use strict'
 
 const assert = require('assert')
+const fs = require('fs')
+const path = require('path')
 const ProgressBar = require('progress')
 const request = require('request')
 
+const checkpoint = path.join(__dirname, '.progress')
 const prefix = '[couch-continuum]'
 function log () {
   if (process.env.DEBUG || process.env.LOG) {
@@ -40,6 +43,72 @@ class CouchContinuum {
         return !isSpecial && !isReplica
       })
     })
+  }
+
+  /**
+   * Check the checkpoint file for an in-progress run
+   * against a particular CouchDB cluster.
+   * @param  {String} couchUrl Location of the CouchDB cluster
+   * @return {Promise<Array>}  List of databases still to be migrated.
+   */
+  static getCheckpoint (couchUrl) {
+    // skip already done
+    return CouchContinuum.allDbs(couchUrl).then((dbNames) => {
+      return new Promise((resolve, reject) => {
+        fs.readFile(checkpoint, 'utf-8', (err, lastDb) => {
+          if (err) {
+            if (err.code === 'ENOENT') return resolve('\u0000')
+            return reject(err)
+          }
+          return resolve(lastDb)
+        })
+      }).then((lastDb) => {
+        return dbNames.filter((dbName) => {
+          return dbName > lastDb
+        })
+      })
+    })
+  }
+
+  static makeCheckpoint (dbName) {
+    return new Promise((resolve, reject) => {
+      fs.writeFile(checkpoint, dbName, 'utf-8', (err) => {
+        if (err) return reject(err)
+        return resolve()
+      })
+    })
+  }
+
+  static removeCheckpoint () {
+    return new Promise((resolve, reject) => {
+      fs.unlink(checkpoint, (err) => {
+        if (err) return reject(err)
+        return resolve()
+      })
+    })
+  }
+
+  static createReplicas (continuums) {
+    return continuums.map((continuum) => {
+      return () => {
+        return continuum.createReplica()
+      }
+    }).reduce((a, b) => {
+      return a.then(b)
+    }, Promise.resolve())
+  }
+
+  static replacePrimaries (continuums) {
+    return continuums.map((continuum) => {
+      return () => {
+        log('Replacing primary "%s" with replica "%s"', continuum.db1, continuum.db2)
+        return continuum.replacePrimary().then(() => {
+          return CouchContinuum.makeCheckpoint(continuum.db1)
+        })
+      }
+    }).reduce((a, b) => {
+      return a.then(b)
+    }, Promise.resolve())
   }
 
   constructor ({ couchUrl, dbName, copyName, interval, q }) {
@@ -83,7 +152,8 @@ class CouchContinuum {
     }).then((body) => {
       const total = body.doc_count
       if (total === 0) return Promise.resolve()
-      const text = '[couch-continuum] Replicating (:bar) :percent :etas'
+      console.log('[couch-continuum] Replicating %s to %s', source, target)
+      const text = '[couch-continuum] (:bar) :percent :etas'
       const bar = new ProgressBar(text, {
         incomplete: ' ',
         width: 20,
@@ -247,7 +317,8 @@ class CouchContinuum {
         return new Promise((resolve) => {
           // sleep, giving the cluster a chance to sort
           // out the rapid recreation.
-          const text = '[couch-continuum] Recreating (:bar) :percent :etas'
+          console.log('[couch-continuum] Recreating primary %s', this.db1)
+          const text = '[couch-continuum] (:bar) :percent :etas'
           const bar = new ProgressBar(text, {
             incomplete: ' ',
             width: 20,

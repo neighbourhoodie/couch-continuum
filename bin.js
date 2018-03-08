@@ -2,7 +2,6 @@
 'use strict'
 
 const CouchContinuum = require('.')
-const fs = require('fs')
 const readline = require('readline')
 
 /*
@@ -48,6 +47,7 @@ function catchError (error) {
   } else {
     log('Unexpected error: %j', error)
   }
+  console.trace(error)
   process.exit(1)
 }
 
@@ -136,50 +136,37 @@ require('yargs')
     description: 'Migrate all non-special databases to new settings.',
     handler: function (argv) {
       const { couchUrl, interval, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      CouchContinuum.allDbs(couchUrl).then((dbNames) => {
-        // skip already done
-        var lastDb = '\u0000'
-        try {
-          lastDb = fs.readFileSync('.progress', 'utf-8')
-        } catch (e) {
-          if (e.code !== 'ENOENT') throw e
-        }
-        return dbNames.filter((dbName) => {
-          return dbName > lastDb
+      if (verbose) { process.env.LOG = true }
+      CouchContinuum
+        .getCheckpoint(couchUrl)
+        .then((dbNames) => {
+          return dbNames.map((dbName) => {
+            const options = { couchUrl, dbName, interval, q }
+            return new CouchContinuum(options)
+          })
         })
-      }).then((dbNames) => {
-        // create continuums for each db
-        return dbNames.map((dbName) => {
-          const options = { couchUrl, dbName, interval, q }
-          return new CouchContinuum(options)
+        .then((continuums) => {
+          log('Creating replicas...')
+          return CouchContinuum
+            .createReplicas(continuums)
+            .then(() => {
+              return getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
+            })
+            .then((consent) => {
+              if (!consent) return log('Could not acquire consent. Exiting...')
+              log('Replacing primaries...')
+              return CouchContinuum
+                .replacePrimaries(continuums)
+            })
         })
-      }).then((continuums) => {
-        return continuums.map((continuum) => {
-          return () => {
-            log('Creating replica of "%s"', continuum.db1)
-            return continuum.createReplica()
-          }
-        }).reduce((a, b) => {
-          return a.then(b)
-        }, Promise.resolve()).then(() => {
-          return continuums.map((continuum) => {
-            return () => {
-              log('Replacing primary "%s" with replica "%s"', continuum.db1, continuum.db2)
-              return continuum.replacePrimary().then(() => {
-                // mark checkpoint
-                fs.writeFileSync('.progress', continuum.db1, 'utf-8')
-              })
-            }
-          }).reduce((a, b) => {
-            return a.then(b)
-          }, Promise.resolve())
+        .then(() => {
+          return CouchContinuum
+            .removeCheckpoint()
         })
-      }).then(() => {
-        // once all done, remove the progress marker
-        fs.unlinkSync('.progress')
-        log('Success! Migration complete.')
-      })
+        .then(() => {
+          log('...success!')
+        })
+        .catch(catchError)
     }
   })
   .options({

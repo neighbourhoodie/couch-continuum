@@ -75,4 +75,27 @@ describe([name, version].join(' @ '), function () {
     const continuum = new CouchContinuum({ couchUrl, dbName, q })
     return continuum._isInUse(dbName)
   })
+
+  it('should migrate all OK', function () {
+    CouchContinuum
+      .getCheckpoint(couchUrl)
+      .then((dbNames) => {
+        return dbNames.map((dbName) => {
+          const options = { couchUrl, dbName, q }
+          return new CouchContinuum(options)
+        })
+      })
+      .then((continuums) => {
+        return CouchContinuum
+          .createReplicas(continuums)
+          .then(() => {
+            return CouchContinuum
+              .replacePrimaries(continuums)
+          })
+      })
+      .then(() => {
+        return CouchContinuum
+          .removeCheckpoint()
+      })
+  })
 })
