@@ -63,6 +63,9 @@ class CouchContinuum {
           return resolve(lastDb)
         })
       }).then((lastDb) => {
+        // ignore any databases that sort lower than
+        // the name in the checkpoint doc,
+        // or the default: the lowest unicode value
         return dbNames.filter((dbName) => {
           return dbName > lastDb
         })
