@@ -77,13 +77,11 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should migrate all OK', function () {
-    CouchContinuum
+    return CouchContinuum
       .getCheckpoint(couchUrl)
-      .then((dbNames) => {
-        return dbNames.map((dbName) => {
-          const options = { couchUrl, dbName, q }
-          return new CouchContinuum(options)
-        })
+      .then(() => {
+        const options = { couchUrl, dbName, q }
+        return [new CouchContinuum(options)]
       })
       .then((continuums) => {
         return CouchContinuum
