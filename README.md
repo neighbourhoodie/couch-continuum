@@ -54,11 +54,9 @@ While the database is being migrated, it will either not exist, or have a local 
 
 ## Installation
 
-Currently, you must install the tool from source using [git](https://git-scm.com/) and [npm](https://www.npmjs.com/):
+Install the tool's dependencies using [npm](https://www.npmjs.com/):
 
 ```bash
-git clone https://github.com/neighbourhoodie/couch-continuum.git
-cd couch-continuum
 npm install
 npm link
 ```
