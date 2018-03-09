@@ -6,13 +6,17 @@
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation. For example:
 
 ```bash
-$ couch-continuum -n test-database -q 4 -u http://$USER:$PASS@localhost:5984
-[couch-continuum] Migrating database 'test-database' to new settings { q: 4 }...
-[couch-continuum] Replicating (====================) 100% 0.0s
+$ couch-continuum -n hello-world -q 4 -u http://$USER:$PASS@localhost:5984
+[couch-continuum] Migrating database 'hello-world' to new settings { q: 4 }...
+[couch-continuum] Replicating hello-world to hello-world_temp_copy
+[couch-continuum] (====================) 100% 0.0s
 Ready to replace the primary with the replica. Continue? [y/N] y
-[couch-continuum] Recreating (====================) 100% 0.0s
-[couch-continuum] Replicating (====================) 100% 0.0s
+[couch-continuum] Recreating primary hello-world
+[couch-continuum] (====================) 100% 0.0s
+[couch-continuum] Replicating hello-world_temp_copy to hello-world
+[couch-continuum] (====================) 100% 0.0s
 [couch-continuum] ... success!
+
 ```
 
 ## Why?
@@ -97,26 +101,32 @@ Options:
 The verbose output will inform you of each stage of the tool's operations. For example:
 
 ```
-$ couch-continuum -n a -q 4 -u http://... -v
-[couch-continuum] Migrating database 'a' to { q: 4 }...
-[couch-continuum] Creating replica a_temp_copy...
+$ couch-continuum -n hello-world -q 4 -u http://... -v
+[couch-continuum] Created new continuum: {"db1":"hello-world","db2":"hello-world_temp_copy","interval":1000,"q":4}
+[couch-continuum] Migrating database 'hello-world' to new settings { q: 4 }...
+[couch-continuum] Creating replica hello-world_temp_copy...
 [couch-continuum] [0/5] Checking if primary is in use...
-[couch-continuum] [1/5] Creating replica db: a_temp_copy
+[couch-continuum] [1/5] Creating replica db: hello-world_temp_copy
 [couch-continuum] [2/5] Beginning replication of primary to replica...
-[couch-continuum] Replicating (====================) 100% 0.0s
+[couch-continuum] Replicating hello-world to hello-world_temp_copy
+[couch-continuum] (====================) 100% 0.0s
+
 [couch-continuum] [3/5] Verifying primary did not change during replication...
 [couch-continuum] [4/5] Verifying primary and replica match...
 [couch-continuum] [5/5] Primary copied to replica.
 Ready to replace the primary with the replica. Continue? [y/N] y
-[couch-continuum] Replacing primary a...
+[couch-continuum] Replacing primary hello-world...
 [couch-continuum] [0/8] Checking if primary is in use...
 [couch-continuum] [1/8] Verifying primary and replica match...
 [couch-continuum] [2/8] Destroying primary...
 [couch-continuum] [3/8] Recreating primary with new settings...
-[couch-continuum] Recreating (====================) 100% 0.0s
+[couch-continuum] Recreating primary hello-world
+[couch-continuum] (====================) 100% 0.0s
 [couch-continuum] [4/8] Setting primary to unavailable.
 [couch-continuum] [5/8] Beginning replication of replica to primary...
-[couch-continuum] Replicating (====================) 100% 0.0s
+[couch-continuum] Replicating hello-world_temp_copy to hello-world
+[couch-continuum] (====================) 100% 0.0s
+
 [couch-continuum] [6/8] Replicated. Destroying replica...
 [couch-continuum] [7/8] Setting primary to available.
 [couch-continuum] [8/8] Primary migrated to new settings.
