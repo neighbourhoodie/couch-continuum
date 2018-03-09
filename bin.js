@@ -38,12 +38,12 @@ function getConsent (question) {
 
 function catchError (error) {
   log('ERROR')
-  if (error.error) {
-    if (error.error === 'not_found') {
-      log('Primary database does not exist. There is nothing to migrate.')
-    } else if (error.error === 'unauthorized') {
-      log('Could not authenticate with CouchDB. Are the credentials correct?')
-    }
+  if (error.error === 'not_found') {
+    log('Primary database does not exist. There is nothing to migrate.')
+  } else if (error.error === 'unauthorized') {
+    log('Could not authenticate with CouchDB. Are the credentials correct?')
+  } else if (error.code === 'EACCES') {
+    log('Could not access the checkpoint document. Are you running as a different user?')
   } else {
     log('Unexpected error: %j', error)
   }
@@ -135,31 +135,37 @@ require('yargs')
     description: 'Migrate all non-special databases to new settings.',
     handler: function (argv) {
       const { couchUrl, interval, q, verbose } = argv
-      if (verbose) process.env.LOG = true
-      CouchContinuum.allDbs(couchUrl).then((dbNames) => {
-        // create continuums for each db
-        const continuums = dbNames.map((dbName) => {
-          const options = { couchUrl, dbName, interval, q }
-          return new CouchContinuum(options)
+      if (verbose) { process.env.LOG = true }
+      CouchContinuum
+        .getCheckpoint(couchUrl)
+        .then((dbNames) => {
+          return dbNames.map((dbName) => {
+            const options = { couchUrl, dbName, interval, q }
+            return new CouchContinuum(options)
+          })
         })
-        // create replicas and migrate one at a time
-        const question = `About to migrate ${dbNames.length} databases. Proceed? [y/N] `
-        return getConsent(question).then((consent) => {
-          if (!consent) return log('Could not acquire consent. Exiting...')
-          return continuums.map((continuum) => {
-            return function () {
-              log(`Migrating database '${continuum.db1}' to new settings: { q: ${q} }...`)
-              return continuum.createReplica().then(function () {
-                return continuum.replacePrimary().then(() => {
-                  log('... success!')
-                })
-              })
-            }
-          }).reduce((a, b) => {
-            return a.then(b)
-          }, Promise.resolve())
+        .then((continuums) => {
+          log('Creating replicas...')
+          return CouchContinuum
+            .createReplicas(continuums)
+            .then(() => {
+              return getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
+            })
+            .then((consent) => {
+              if (!consent) return log('Could not acquire consent. Exiting...')
+              log('Replacing primaries...')
+              return CouchContinuum
+                .replacePrimaries(continuums)
+            })
         })
-      })
+        .then(() => {
+          return CouchContinuum
+            .removeCheckpoint()
+        })
+        .then(() => {
+          log('...success!')
+        })
+        .catch(catchError)
     }
   })
   .options({

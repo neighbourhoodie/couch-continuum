@@ -54,15 +54,6 @@ describe([name, version].join(' @ '), function () {
     })
   })
 
-  it('should work', function () {
-    this.timeout(30 * 1000) // 30s
-    const options = { couchUrl, dbName, q }
-    const continuum = new CouchContinuum(options)
-    return continuum.createReplica().then(() => {
-      return continuum.replacePrimary()
-    })
-  })
-
   it('should create replicas repeatedly OK', function () {
     const options = { couchUrl, dbName, q }
     const continuum = new CouchContinuum(options)
@@ -71,8 +62,40 @@ describe([name, version].join(' @ '), function () {
     })
   })
 
+  it('should replicate and replace a primary', function () {
+    this.timeout(30 * 1000) // 30s
+    const options = { couchUrl, dbName, q }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica().then(() => {
+      return continuum.replacePrimary()
+    })
+  })
+
   it('should check if a db is in use', function () {
     const continuum = new CouchContinuum({ couchUrl, dbName, q })
     return continuum._isInUse(dbName)
+  })
+
+  it('should migrate all OK', function () {
+    CouchContinuum
+      .getCheckpoint(couchUrl)
+      .then((dbNames) => {
+        return dbNames.map((dbName) => {
+          const options = { couchUrl, dbName, q }
+          return new CouchContinuum(options)
+        })
+      })
+      .then((continuums) => {
+        return CouchContinuum
+          .createReplicas(continuums)
+          .then(() => {
+            return CouchContinuum
+              .replacePrimaries(continuums)
+          })
+      })
+      .then(() => {
+        return CouchContinuum
+          .removeCheckpoint()
+      })
   })
 })
