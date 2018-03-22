@@ -82,18 +82,19 @@ Commands:
                                    settings.                      [aliases: all]
 
 Options:
-  --version       Show version number                                  [boolean]
-  --couchUrl, -u  The URL of the CouchDB cluster to act upon.
+  --version        Show version number                                 [boolean]
+  --couchUrl, -u   The URL of the CouchDB cluster to act upon.
                                [default: "http://admin:password@localhost:5984"]
-  --interval, -i  How often (in milliseconds) to check replication tasks for
-                  progress.                                      [default: 1000]
-  -q              The desired "q" value for the new database.[number] [required]
-  --verbose, -v   Enable verbose logging.                              [boolean]
-  --config        Path to JSON config file
-  --dbName, -n    The name of the database to modify.        [string] [required]
-  --copyName, -c  The name of the database to use as a replica. Defaults to
-                  {dbName}_temp_copy                                    [string]
-  -h, --help      Show help                                            [boolean]
+  --interval, -i   How often (in milliseconds) to check replication tasks for
+                   progress.                                     [default: 1000]
+  -q               The desired "q" value for the new database.          [number]
+  --verbose, -v    Enable verbose logging.                             [boolean]
+  --placement, -p  Placement rule for the affected database(s).         [string]
+  --config         Path to JSON config file
+  --dbName, -n     The name of the database to modify.       [string] [required]
+  --copyName, -c   The name of the database to use as a replica. Defaults to
+                   {dbName}_temp_copy                                   [string]
+  -h, --help       Show help                                           [boolean]
 ```
 
 The verbose output will inform you of each stage of the tool's operations. For example:
