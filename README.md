@@ -1,7 +1,10 @@
 # couch-continuum
 
-[![Stability](https://img.shields.io/badge/stability-experimental-orange.svg)](https://nodejs.org/api/documentation.html#documentation_stability_index)
-[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![Stability](https://img.shields.io/badge/stability-experimental-orange.svg?style=flat-square)](https://nodejs.org/api/documentation.html#documentation_stability_index)
+[![npm version](https://img.shields.io/npm/v/couch-continuum.svg?style=flat-square)](https://www.npmjs.com/package/couch-continuum)
+[![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.com/neighbourhoodie/couch-continuum)
+[![Test Coverage](https://img.shields.io/coveralls/github/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
 
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
 
