@@ -3,7 +3,7 @@
 [![Stability](https://img.shields.io/badge/stability-experimental-orange.svg)](https://nodejs.org/api/documentation.html#documentation_stability_index)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 
-A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation. For example:
+A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
 
 ```bash
 $ couch-continuum -n hello-world -q 4 -u http://$USER:$PASS@localhost:5984
@@ -21,7 +21,11 @@ Ready to replace the primary with the replica. Continue? [y/N] y
 
 ## Why?
 
-Some database settings can only be set when the database is created. In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
+Some database settings can only be set when the database is created, like `q` and `placement`. `q` reflects the number of shards to maintain per replica of a database, and `placement` indicates where those shards will be stored.
+
+In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. Sometimes a database accumulates enough [tombstones](http://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid) that it becomes necessary to delete them en-masse by migrating the database this way.
+
+CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
 
 ## How it works
 
@@ -154,3 +158,5 @@ All contributions are welcome: bug reports, feature requests, "why doesn't this 
 ## License
 
 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
+(c) 2018 Neighbourhoodie Software & Open Source contributors
