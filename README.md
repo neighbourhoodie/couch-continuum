@@ -3,7 +3,7 @@
 [![Stability](https://img.shields.io/badge/stability-experimental-orange.svg?style=flat-square)](https://nodejs.org/api/documentation.html#documentation_stability_index)
 [![npm version](https://img.shields.io/npm/v/couch-continuum.svg?style=flat-square)](https://www.npmjs.com/package/couch-continuum)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
-<!-- [![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.com/neighbourhoodie/couch-continuum) -->
+[![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.org/neighbourhoodie/couch-continuum)
 <!-- [![Test Coverage](https://img.shields.io/coveralls/github/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum) -->
 
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
@@ -59,11 +59,10 @@ While the database is being migrated, it will either not exist, or have a local 
 
 ## Installation
 
-Install the tool's dependencies using [npm](https://www.npmjs.com/):
+Install the tool using [npm](https://www.npmjs.com/):
 
 ```bash
-npm install
-npm link
+$ npm install -g couch-continuum
 ```
 
 Now you can use the `couch-continuum` command. Run `couch-continuum -h` to see usage information.
