@@ -117,7 +117,6 @@ class CouchContinuum {
   constructor ({ couchUrl, dbName, copyName, placement, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
-    assert(q, 'The Continuum requires a desired "q" setting.')
     this.url = couchUrl
     this.db1 = encodeURIComponent(dbName)
     this.db2 = (copyName && encodeURIComponent(copyName)) || (this.db1 + '_temp_copy')
