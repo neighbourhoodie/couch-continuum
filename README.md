@@ -23,9 +23,7 @@ Ready to replace the primary with the replica. Continue? [y/N] y
 
 Some database settings can only be set when the database is created, like `q` and `placement`. `q` reflects the number of shards to maintain per replica of a database, and `placement` indicates where those shards will be stored.
 
-In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. Sometimes a database accumulates enough [tombstones](http://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid) that it becomes necessary to delete them en-masse by migrating the database this way.
-
-CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
+In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
 
 ## How it works
 
