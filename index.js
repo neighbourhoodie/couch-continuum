@@ -114,7 +114,7 @@ class CouchContinuum {
     }, Promise.resolve())
   }
 
-  constructor ({ couchUrl, dbName, copyName, interval, q }) {
+  constructor ({ couchUrl, dbName, copyName, placement, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     assert(q, 'The Continuum requires a desired "q" setting.')
@@ -123,19 +123,24 @@ class CouchContinuum {
     this.db2 = (copyName && encodeURIComponent(copyName)) || (this.db1 + '_temp_copy')
     this.interval = interval || 1000
     this.q = q
+    this.placement = placement
     log('Created new continuum: %j', {
       db1: this.db1,
       db2: this.db2,
       interval: this.interval,
-      q: this.q
+      q: this.q,
+      placement: this.placement
     })
   }
 
   _createDb (dbName) {
+    var qs = {}
+    if (this.q) qs.q = this.q
+    if (this.placement) qs.placement = this.placement
     return makeRequest({
       url: [this.url, dbName].join('/'),
       method: 'PUT',
-      qs: { q: this.q },
+      qs: qs,
       json: true
     })
   }

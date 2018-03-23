@@ -15,9 +15,9 @@ function log () {
 }
 
 function getContinuum (argv) {
-  const { couchUrl, dbName, copyName, interval, q, verbose } = argv
+  const { couchUrl, dbName, copyName, interval, placement, q, verbose } = argv
   if (verbose) process.env.LOG = true
-  const options = { couchUrl, dbName, copyName, interval, q }
+  const options = { couchUrl, dbName, copyName, interval, placement, q }
   return new CouchContinuum(options)
 }
 
@@ -76,7 +76,7 @@ require('yargs')
     },
     handler: function (argv) {
       const continuum = getContinuum(argv)
-      log(`Migrating database '${argv.dbName}' to new settings { q: ${argv.q} }...`)
+      log(`Migrating database '${argv.dbName}'...`)
       continuum.createReplica().then(function () {
         return getConsent()
       }).then((consent) => {
@@ -120,7 +120,7 @@ require('yargs')
     description: 'Replace the given primary with the indicated replica.',
     handler: function (argv) {
       const continuum = getContinuum(argv)
-      log(`Replacing primary ${continuum.db1} with ${continuum.db2} and settings { q:${continuum.q} }`)
+      log(`Replacing primary ${continuum.db1} with ${continuum.db2}...`)
       getConsent().then((consent) => {
         if (!consent) return log('Could not acquire consent. Exiting...')
         return continuum.replacePrimary().then(() => {
@@ -134,13 +134,13 @@ require('yargs')
     aliases: ['all'],
     description: 'Migrate all non-special databases to new settings.',
     handler: function (argv) {
-      const { couchUrl, interval, q, verbose } = argv
+      const { couchUrl, interval, placement, q, verbose } = argv
       if (verbose) { process.env.LOG = true }
       CouchContinuum
         .getCheckpoint(couchUrl)
         .then((dbNames) => {
           return dbNames.map((dbName) => {
-            const options = { couchUrl, dbName, interval, q }
+            const options = { couchUrl, dbName, interval, placement, q }
             return new CouchContinuum(options)
           })
         })
@@ -181,13 +181,17 @@ require('yargs')
     },
     q: {
       description: 'The desired "q" value for the new database.',
-      required: true,
       type: 'number'
     },
     verbose: {
       alias: 'v',
       description: 'Enable verbose logging.',
       type: 'boolean'
+    },
+    placement: {
+      alias: 'p',
+      description: 'Placement rule for the affected database(s).',
+      type: 'string'
     }
   })
   .config()
