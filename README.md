@@ -28,6 +28,8 @@ Some database settings can only be set when the database is created, like `q` an
 
 In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
 
+Additionally, databases can accumulate [tombstones of deleted documents](http://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid) that can slow down certain activities. CouchContinuum automatically filters out these tombstones when it migrates a database.
+
 ## How it works
 
 **NOTE: CouchContinuum's approach involves some downtime where the database being migrated is unavailable. Use accordingly!**
