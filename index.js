@@ -262,6 +262,13 @@ class CouchContinuum {
       makeRequest({
         url: [this.url, '_scheduler', 'jobs'].join('/'),
         json: true
+      }).catch((error) => {
+        // catch 1.x
+        if (error.error === 'illegal_database_name') {
+          return { jobs: [] }
+        } else {
+          throw error
+        }
       })
     ]).then(([activeTasks, jobsResponse]) => {
       const { jobs } = jobsResponse
