@@ -153,7 +153,7 @@ class CouchContinuum {
     })
   }
 
-  _replicate (source, target) {
+  _replicate (source, target, selector) {
     return makeRequest({
       url: [this.url, source].join('/'),
       json: true
@@ -185,7 +185,7 @@ class CouchContinuum {
       return makeRequest({
         url: [this.url, '_replicate'].join('/'),
         method: 'POST',
-        json: { source, target }
+        json: { source, target, selector }
       }).then(() => {
         bar.tick(total)
         clearInterval(timer)
@@ -207,7 +207,7 @@ class CouchContinuum {
       getDocCount(this.db1),
       getDocCount(this.db2)
     ]).then(([docCount1, docCount2]) => {
-      assert(docCount1 <= docCount2, 'Primary and replica do not have the same number of documents.')
+      assert.equal(docCount1, docCount2, 'Primary and replica do not have the same number of documents.')
     })
   }
 
@@ -302,7 +302,8 @@ class CouchContinuum {
       })
     }).then(() => {
       log('[2/5] Beginning replication of primary to replica...')
-      return this._replicate(this.db1, this.db2)
+      const selector = { _deleted: { '$exists': false } }
+      return this._replicate(this.db1, this.db2, selector)
     }).then(() => {
       log('[3/5] Verifying primary did not change during replication...')
       return this._getUpdateSeq(this.db1).then((seq) => {
