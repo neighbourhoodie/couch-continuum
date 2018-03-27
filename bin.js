@@ -15,9 +15,9 @@ function log () {
 }
 
 function getContinuum (argv) {
-  const { couchUrl, dbName, copyName, interval, placement, q, verbose } = argv
+  const { copyName, couchUrl, dbName, filterTombstones, interval, placement, q, verbose } = argv
   if (verbose) process.env.LOG = true
-  const options = { couchUrl, dbName, copyName, interval, placement, q }
+  const options = { copyName, couchUrl, dbName, filterTombstones, interval, placement, q }
   return new CouchContinuum(options)
 }
 
@@ -134,13 +134,13 @@ require('yargs')
     aliases: ['all'],
     description: 'Migrate all non-special databases to new settings.',
     handler: function (argv) {
-      const { couchUrl, interval, placement, q, verbose } = argv
+      const { couchUrl, filterTombstones, interval, placement, q, verbose } = argv
       if (verbose) { process.env.LOG = true }
       CouchContinuum
         .getCheckpoint(couchUrl)
         .then((dbNames) => {
           return dbNames.map((dbName) => {
-            const options = { couchUrl, dbName, interval, placement, q }
+            const options = { couchUrl, dbName, filterTombstones, interval, placement, q }
             return new CouchContinuum(options)
           })
         })
@@ -192,6 +192,11 @@ require('yargs')
       alias: 'p',
       description: 'Placement rule for the affected database(s).',
       type: 'string'
+    },
+    filterTombstones: {
+      alias: 'f',
+      description: 'Filter tombstones during replica creation.',
+      default: false
     }
   })
   .config()

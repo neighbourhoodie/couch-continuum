@@ -29,7 +29,7 @@ Some database settings can only be set when the database is created, like `q` an
 
 In order to modify these values, it is necessary to create a new database and migrate the data from the old database to the new one. CouchContinuum handles this migration process for you so that it works reliably, and so your application can work around the migration while the database is unavailable.
 
-Additionally, databases can accumulate [tombstones of deleted documents](http://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid) that can slow down certain activities. CouchContinuum automatically filters out these tombstones when it migrates a database.
+Additionally, databases can accumulate [tombstones of deleted documents](http://docs.couchdb.org/en/latest/api/document/common.html#delete--db-docid) that can slow down certain activities. CouchContinuum optionally filters out these tombstones when it migrates a database.
 
 ## How it works
 
@@ -89,19 +89,21 @@ Commands:
                                    settings.                      [aliases: all]
 
 Options:
-  --version        Show version number                                 [boolean]
-  --couchUrl, -u   The URL of the CouchDB cluster to act upon.
+  --version               Show version number                          [boolean]
+  --couchUrl, -u          The URL of the CouchDB cluster to act upon.
                                [default: "http://admin:password@localhost:5984"]
-  --interval, -i   How often (in milliseconds) to check replication tasks for
-                   progress.                                     [default: 1000]
-  -q               The desired "q" value for the new database.          [number]
-  --verbose, -v    Enable verbose logging.                             [boolean]
-  --placement, -p  Placement rule for the affected database(s).         [string]
-  --config         Path to JSON config file
-  --dbName, -n     The name of the database to modify.       [string] [required]
-  --copyName, -c   The name of the database to use as a replica. Defaults to
-                   {dbName}_temp_copy                                   [string]
-  -h, --help       Show help                                           [boolean]
+  --interval, -i          How often (in milliseconds) to check replication tasks
+                          for progress.                          [default: 1000]
+  -q                      The desired "q" value for the new database.   [number]
+  --verbose, -v           Enable verbose logging.                      [boolean]
+  --placement, -p         Placement rule for the affected database(s).  [string]
+  --filterTombstones, -f  Filter tombstones during replica creation.
+                                                                [default: false]
+  --config                Path to JSON config file
+  --dbName, -n            The name of the database to modify.[string] [required]
+  --copyName, -c          The name of the database to use as a replica. Defaults
+                          to {dbName}_temp_copy                         [string]
+  -h, --help              Show help                                    [boolean]
 ```
 
 The verbose output will inform you of each stage of the tool's operations. For example:
