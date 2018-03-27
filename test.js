@@ -96,4 +96,10 @@ describe([name, version].join(' @ '), function () {
           .removeCheckpoint()
       })
   })
+
+  it('should filter tombstones', function () {
+    const options = { couchUrl, dbName, filterTombstones: true }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica()
+  })
 })
