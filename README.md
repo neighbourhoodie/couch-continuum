@@ -1,11 +1,10 @@
 # couch-continuum
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/neighbourhoodie/couch-continuum.svg)](https://greenkeeper.io/)
-
 [![Stability](https://img.shields.io/badge/stability-experimental-orange.svg?style=flat-square)](https://nodejs.org/api/documentation.html#documentation_stability_index)
 [![npm version](https://img.shields.io/npm/v/couch-continuum.svg?style=flat-square)](https://www.npmjs.com/package/couch-continuum)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
-[![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.org/neighbourhoodie/couch-continuum)
+[![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.org/neighbourhoodie/couch-continuum) [![Greenkeeper badge](https://badges.greenkeeper.io/neighbourhoodie/couch-continuum.svg)](https://greenkeeper.io/)
+
 <!-- [![Test Coverage](https://img.shields.io/coveralls/github/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum) -->
 
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
