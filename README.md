@@ -1,5 +1,7 @@
 # couch-continuum
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/neighbourhoodie/couch-continuum.svg)](https://greenkeeper.io/)
+
 [![Stability](https://img.shields.io/badge/stability-experimental-orange.svg?style=flat-square)](https://nodejs.org/api/documentation.html#documentation_stability_index)
 [![npm version](https://img.shields.io/npm/v/couch-continuum.svg?style=flat-square)](https://www.npmjs.com/package/couch-continuum)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
