@@ -114,7 +114,7 @@ class CouchContinuum {
     }, Promise.resolve())
   }
 
-  constructor ({ couchUrl, dbName, copyName, placement, interval, q }) {
+  constructor ({ couchUrl, dbName, copyName, filterTombstones, placement, interval, q }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     this.url = couchUrl
@@ -123,6 +123,7 @@ class CouchContinuum {
     this.interval = interval || 1000
     this.q = q
     this.placement = placement
+    this.filterTombstones = filterTombstones
     log('Created new continuum: %j', {
       db1: this.db1,
       db2: this.db2,
@@ -301,7 +302,8 @@ class CouchContinuum {
       })
     }).then(() => {
       log('[2/5] Beginning replication of primary to replica...')
-      const selector = { _deleted: { '$exists': false } }
+      var selector
+      if (this.filterTombstones) selector = { _deleted: { '$exists': false } }
       return this._replicate(this.db1, this.db2, selector)
     }).then(() => {
       log('[3/5] Verifying primary did not change during replication...')
