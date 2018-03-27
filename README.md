@@ -7,8 +7,6 @@
 [![Coverage Status](https://coveralls.io/repos/github/neighbourhoodie/couch-continuum/badge.svg?branch=master&style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum?branch=master)
 [![Greenkeeper badge](https://badges.greenkeeper.io/neighbourhoodie/couch-continuum.svg)](https://greenkeeper.io/)
 
-<!-- [![Test Coverage](https://img.shields.io/coveralls/github/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum) -->
-
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
 
 ```bash
