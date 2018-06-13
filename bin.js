@@ -62,7 +62,7 @@ require('yargs')
     builder: function (yargs) {
       yargs.options({
         dbName: {
-          alias: 'n',
+          alias: 'N',
           description: 'The name of the database to modify.',
           required: true,
           type: 'string'
@@ -181,6 +181,10 @@ require('yargs')
     },
     q: {
       description: 'The desired "q" value for the new database.',
+      type: 'number'
+    },
+    n: {
+      description: 'The desired "n" value for the new database.',
       type: 'number'
     },
     verbose: {

@@ -114,7 +114,7 @@ class CouchContinuum {
     }, Promise.resolve())
   }
 
-  constructor ({ couchUrl, dbName, copyName, filterTombstones, placement, interval, q }) {
+  constructor ({ couchUrl, dbName, copyName, filterTombstones, placement, interval, q, n }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     this.url = couchUrl
@@ -122,6 +122,7 @@ class CouchContinuum {
     this.db2 = (copyName && encodeURIComponent(copyName)) || (this.db1 + '_temp_copy')
     this.interval = interval || 1000
     this.q = q
+    this.n = n
     this.placement = placement
     this.filterTombstones = filterTombstones
     log('Created new continuum: %j', {
@@ -129,6 +130,7 @@ class CouchContinuum {
       db2: this.db2,
       interval: this.interval,
       q: this.q,
+      n: this.n,
       placement: this.placement
     })
   }
@@ -136,6 +138,7 @@ class CouchContinuum {
   _createDb (dbName) {
     var qs = {}
     if (this.q) qs.q = this.q
+    if (this.n) qs.n = this.n
     if (this.placement) qs.placement = this.placement
     return makeRequest({
       url: [this.url, dbName].join('/'),

@@ -82,6 +82,22 @@ describe([name, version].join(' @ '), function () {
     return continuum.createReplica()
   })
 
+  it('should modify n', function () {
+    const options = { couchUrl, dbName, n: 1 }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica()
+      .then(() => {
+        return new Promise((resolve, reject) => {
+          const url = [couchUrl, continuum.db2].join('/')
+          request({ url, json: true }, (err, response, { cluster }) => {
+            if (err) return reject(err)
+            else if (cluster.n !== 1) reject(new Error(`n should be 1 but is ${cluster.n}.`))
+            else return resolve()
+          })
+        })
+      })
+  })
+
   it('should migrate all OK', function () {
     this.timeout(30 * 1000)
     return CouchContinuum
