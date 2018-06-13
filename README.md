@@ -10,17 +10,12 @@
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
 
 ```bash
-$ couch-continuum -n hello-world -q 4 -u http://$USER:$PASS@localhost:5984
-[couch-continuum] Migrating database 'hello-world' to new settings { q: 4 }...
-[couch-continuum] Replicating hello-world to hello-world_temp_copy
-[couch-continuum] (====================) 100% 0.0s
+$ couch-continuum -N hello-world -q 4 -n 1 -u http://$USER:$PASS@localhost:5984
+[couch-continuum] Migrating database 'hello-world'...
 Ready to replace the primary with the replica. Continue? [y/N] y
 [couch-continuum] Recreating primary hello-world
 [couch-continuum] (====================) 100% 0.0s
-[couch-continuum] Replicating hello-world_temp_copy to hello-world
-[couch-continuum] (====================) 100% 0.0s
 [couch-continuum] ... success!
-
 ```
 
 ## Why?
@@ -95,12 +90,13 @@ Options:
   --interval, -i          How often (in milliseconds) to check replication tasks
                           for progress.                          [default: 1000]
   -q                      The desired "q" value for the new database.   [number]
+  -n                      The desired "n" value for the new database.   [number]
   --verbose, -v           Enable verbose logging.                      [boolean]
   --placement, -p         Placement rule for the affected database(s).  [string]
   --filterTombstones, -f  Filter tombstones during replica creation.
                                                                 [default: false]
   --config                Path to JSON config file
-  --dbName, -n            The name of the database to modify.[string] [required]
+  --dbName, -N            The name of the database to modify.[string] [required]
   --copyName, -c          The name of the database to use as a replica. Defaults
                           to {dbName}_temp_copy                         [string]
   -h, --help              Show help                                    [boolean]
@@ -109,16 +105,13 @@ Options:
 The verbose output will inform you of each stage of the tool's operations. For example:
 
 ```
-$ couch-continuum -n hello-world -q 4 -u http://... -v
-[couch-continuum] Created new continuum: {"db1":"hello-world","db2":"hello-world_temp_copy","interval":1000,"q":4}
-[couch-continuum] Migrating database 'hello-world' to new settings { q: 4 }...
+$ couch-continuum -N hello-world -q 4 -u http://... -v
+[couch-continuum] Created new continuum: {"db1":"hello-world","db2":"hello-world_temp_copy","interval":1000,"q":4,"n":1}
+[couch-continuum] Migrating database 'hello-world'...
 [couch-continuum] Creating replica hello-world_temp_copy...
 [couch-continuum] [0/5] Checking if primary is in use...
 [couch-continuum] [1/5] Creating replica db: hello-world_temp_copy
 [couch-continuum] [2/5] Beginning replication of primary to replica...
-[couch-continuum] Replicating hello-world to hello-world_temp_copy
-[couch-continuum] (====================) 100% 0.0s
-
 [couch-continuum] [3/5] Verifying primary did not change during replication...
 [couch-continuum] [4/5] Verifying primary and replica match...
 [couch-continuum] [5/5] Primary copied to replica.
@@ -132,9 +125,6 @@ Ready to replace the primary with the replica. Continue? [y/N] y
 [couch-continuum] (====================) 100% 0.0s
 [couch-continuum] [4/8] Setting primary to unavailable.
 [couch-continuum] [5/8] Beginning replication of replica to primary...
-[couch-continuum] Replicating hello-world_temp_copy to hello-world
-[couch-continuum] (====================) 100% 0.0s
-
 [couch-continuum] [6/8] Replicated. Destroying replica...
 [couch-continuum] [7/8] Setting primary to available.
 [couch-continuum] [8/8] Primary migrated to new settings.

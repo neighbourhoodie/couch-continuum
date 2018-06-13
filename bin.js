@@ -15,9 +15,9 @@ function log () {
 }
 
 function getContinuum (argv) {
-  const { copyName, couchUrl, dbName, filterTombstones, interval, placement, q, verbose } = argv
+  const { copyName, couchUrl, dbName, filterTombstones, interval, n, placement, q, verbose } = argv
   if (verbose) process.env.LOG = true
-  const options = { copyName, couchUrl, dbName, filterTombstones, interval, placement, q }
+  const options = { copyName, couchUrl, dbName, filterTombstones, interval, n, placement, q }
   return new CouchContinuum(options)
 }
 
