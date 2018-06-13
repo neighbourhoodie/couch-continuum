@@ -76,7 +76,14 @@ describe([name, version].join(' @ '), function () {
     return continuum._isInUse(dbName)
   })
 
+  it('should filter tombstones', function () {
+    const options = { couchUrl, dbName, filterTombstones: true }
+    const continuum = new CouchContinuum(options)
+    return continuum.createReplica()
+  })
+
   it('should migrate all OK', function () {
+    this.timeout(30 * 1000)
     return CouchContinuum
       .getCheckpoint(couchUrl)
       .then(() => {
@@ -97,9 +104,18 @@ describe([name, version].join(' @ '), function () {
       })
   })
 
-  it('should filter tombstones', function () {
-    const options = { couchUrl, dbName, filterTombstones: true }
-    const continuum = new CouchContinuum(options)
-    return continuum.createReplica()
+  it('should clean up after itself', function (done) {
+    const url = [couchUrl, '_all_dbs'].join('/')
+    request({ url, json: true }, (err, response, allDbs) => {
+      if (err) return done(err)
+      const leftovers = allDbs.filter((db) => {
+        return (db.substring(0, 1) !== '_') && (db !== dbName)
+      })
+      if (leftovers.length > 0) {
+        done(new Error('There should be no DBs leftover from testing.'))
+      } else {
+        done()
+      }
+    })
   })
 })
