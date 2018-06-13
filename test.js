@@ -112,7 +112,7 @@ describe([name, version].join(' @ '), function () {
         return (db.substring(0, 1) !== '_') && (db !== dbName)
       })
       if (leftovers.length > 0) {
-        done(new Error('There should be no DBs leftover from testing.'))
+        done(new Error(`There should be no DBs leftover from testing. Instead found: ${leftovers}`))
       } else {
         done()
       }
