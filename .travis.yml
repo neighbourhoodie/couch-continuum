@@ -1,4 +1,7 @@
+sudo: false
 language: node_js
+notifications:
+  email: false
 services:
 - couchdb
 node_js:
@@ -7,6 +10,8 @@ node_js:
 - 6
 before_script:
 - "curl -X DELETE http://localhost:5984/bicycle"
+- npm i -g npm
+- npm prune
 after_success:
 - npx nyc npm test
 - npx nyc report --reporter=text-lcov | npx coveralls

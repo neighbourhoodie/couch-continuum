@@ -7,13 +7,13 @@
     "couch-continuum": "bin.js"
   },
   "scripts": {
-    "test": "standard && dependency-check . --unused --no-dev && mocha"
+    "test": "standard && dependency-check . --unused --no-dev && mocha && npm audit"
   },
   "author": "Diana Thayer <garbados@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
     "progress": "^2.0.0",
-    "request": "^2.83.0",
+    "request": "^2.86.0",
     "yargs": "^11.0.0"
   },
   "devDependencies": {
