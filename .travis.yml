@@ -9,6 +9,7 @@ node_js:
 - 8
 - 6
 before_script:
+- "curl -X DELETE http://localhost:5984/bicycle"
 - npm i -g npm
 - npm prune
 after_success:
