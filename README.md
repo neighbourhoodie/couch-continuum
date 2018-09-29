@@ -148,7 +148,7 @@ npm test
 
 ## Contributions
 
-All contributions are welcome: bug reports, feature requests, "why doesn't this work" questions, patches for fixes and features, etc. For all of the above, [file an issue](https://github.com/garbados/mastermind-game/issues) or [submit a pull request](https://github.com/garbados/mastermind-game/pulls).
+All contributions are welcome: bug reports, feature requests, "why doesn't this work" questions, patches for fixes and features, etc. For all of the above, [file an issue](https://github.com/neighbourhoodie/couch-continuum/issues) or [submit a pull request](https://github.com/neighbourhoodie/couch-continuum/pulls).
 
 ## License
 
