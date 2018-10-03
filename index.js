@@ -88,9 +88,19 @@ class CouchContinuum {
     return request({ url, qs: { rev }, method: 'DELETE' })
   }
 
-  constructor ({ couchUrl, source, target, filterTombstones, placement, interval, q, n }) {
+  constructor ({
+    couchUrl,
+    filterTombstones,
+    interval,
+    n,
+    placement,
+    q,
+    replicateSecurity,
+    source,
+    target
+  }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
-    assert(source, 'The Continuum requires a target database.')
+    assert(source, 'The Continuum requires a source database.')
     this.url = urlParse(couchUrl)
     // get source url
     const parsedSource = urlParse(source)
@@ -116,17 +126,20 @@ class CouchContinuum {
     this.n = n
     this.placement = placement
     this.filterTombstones = filterTombstones
+    this.replicateSecurity = replicateSecurity
     // what's great for a snack and fits on your back
     // it's log it's log it's log
     // everyone wants a log
     const options = {
-      url: this.url.host,
+      filterTombstones: this.filterTombstones,
+      interval: this.interval,
+      n: this.n,
+      placement: this.placement,
+      q: this.q,
+      replicateSecurity: this.replicateSecurity,
       source: `${this.source.host}${this.source.path}`,
       target: `${this.target.host}${this.target.path}`,
-      interval: this.interval,
-      q: this.q,
-      n: this.n,
-      placement: this.placement
+      url: this.url.host
     }
     log(`Created new continuum: ${JSON.stringify(options, undefined, 2)}`)
   }
@@ -179,6 +192,19 @@ class CouchContinuum {
       method: 'POST',
       json: { source: source.href, target: target.href, selector }
     })
+    // copy security object over
+    if (this.replicateSecurity) {
+      log(`Replicating ${source}/_security to ${target}...`)
+      const security = await request({
+        url: `${this.source.href}/_security`,
+        json: true
+      })
+      await request({
+        url: `${this.target.href}/_security`,
+        method: 'PUT',
+        json: security
+      })
+    }
     bar.tick(total)
     clearInterval(timer)
   }

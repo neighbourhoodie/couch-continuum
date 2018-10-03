@@ -102,6 +102,8 @@ Options:
                                                                         [string]
   --filterTombstones, -f        Filter tombstones during replica creation. Does
                                 not work with CouchDB 1.x       [default: false]
+  --replicateSecurity, -r       Replicate a database's /_security object in
+                                addition to its documents.      [default: false]
   --config                      Path to JSON config file
   -h, --help                    Show help                              [boolean]
 ```

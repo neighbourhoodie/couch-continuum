@@ -17,6 +17,7 @@ function getContinuum ({
   n,
   placement,
   q,
+  replicateSecurity,
   source,
   target,
   verbose
@@ -29,6 +30,7 @@ function getContinuum ({
     n,
     placement,
     q,
+    replicateSecurity,
     source,
     target
   })
@@ -116,26 +118,13 @@ require('yargs')
     command: 'migrate-all',
     aliases: ['all'],
     description: 'Migrate all non-special databases to new settings.',
-    handler: async function ({
-      couchUrl,
-      filterTombstones,
-      interval,
-      placement,
-      q,
-      verbose
-    }) {
+    handler: async function (argv) {
+      const { couchUrl, verbose } = argv
       if (verbose) { process.env.LOG = true }
       try {
         const dbNames = await CouchContinuum.getRemaining(couchUrl)
         const continuums = dbNames.map((dbName) => {
-          return new CouchContinuum({
-            couchUrl,
-            source: dbName,
-            filterTombstones,
-            interval,
-            placement,
-            q
-          })
+          return new CouchContinuum({ dbName, ...argv })
         })
         log('Creating replicas...')
         await CouchContinuum.createReplicas(continuums)
@@ -197,6 +186,11 @@ require('yargs')
     filterTombstones: {
       alias: 'f',
       description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
+      default: false
+    },
+    replicateSecurity: {
+      alias: 'r',
+      description: 'Replicate a database\'s /_security object in addition to its documents.',
       default: false
     }
   })
