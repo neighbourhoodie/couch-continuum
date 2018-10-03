@@ -84,23 +84,26 @@ Commands:
                                    settings.                      [aliases: all]
 
 Options:
-  --version               Show version number                          [boolean]
-  --source, -s            The name or URL of a database to use as a primary.
-                                                             [string] [required]
-  --target, -t            The name or URL of a database to use as a replica.
-                          Defaults to {source}_temp_copy                [string]
-  --couchUrl, -u          The URL of the CouchDB cluster to act upon.
+  --version                     Show version number                    [boolean]
+  --source, --dbNames, -N, -s   The name or URL of a database to use as a
+                                primary.                     [string] [required]
+  --target, --copyName, -c, -t  The name or URL of a database to use as a
+                                replica. Defaults to {source}_temp_copy [string]
+  --couchUrl, -u                The URL of the CouchDB cluster to act upon.
                                [default: "http://admin:password@localhost:5984"]
-  --interval, -i          How often (in milliseconds) to check replication tasks
-                          for progress.                          [default: 1000]
-  -q                      The desired "q" value for the new database.   [number]
-  -n                      The desired "n" value for the new database.   [number]
-  --verbose, -v           Enable verbose logging.                      [boolean]
-  --placement, -p         Placement rule for the affected database(s).  [string]
-  --filterTombstones, -f  Filter tombstones during replica creation. Does not
-                          work with CouchDB 1.x                 [default: false]
-  --config                Path to JSON config file
-  -h, --help              Show help                                    [boolean]
+  --interval, -i                How often (in milliseconds) to check replication
+                                tasks for progress.              [default: 1000]
+  -q                            The desired "q" value for the new database.
+                                                                        [number]
+  -n                            The desired "n" value for the new database.
+                                                                        [number]
+  --verbose, -v                 Enable verbose logging.                [boolean]
+  --placement, -p               Placement rule for the affected database(s).
+                                                                        [string]
+  --filterTombstones, -f        Filter tombstones during replica creation. Does
+                                not work with CouchDB 1.x       [default: false]
+  --config                      Path to JSON config file
+  -h, --help                    Show help                              [boolean]
 ```
 
 The verbose output will inform you of each stage of the tool's operations. For example:

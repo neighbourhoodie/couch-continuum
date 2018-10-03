@@ -148,6 +148,12 @@ require('yargs')
       } catch (error) { catchError(error) }
     }
   })
+  // backwards compat with old flag names
+  .alias('source', 'dbNames')
+  .alias('source', 'N')
+  .alias('target', 'copyName')
+  .alias('target', 'c')
+  // actual options
   .options({
     source: {
       alias: 's',
