@@ -191,7 +191,7 @@ require('yargs')
     replicateSecurity: {
       alias: 'r',
       description: 'Replicate a database\'s /_security object in addition to its documents.',
-      default: false
+      default: true
     }
   })
   .config()
