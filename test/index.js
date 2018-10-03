@@ -45,7 +45,7 @@ describe([name, version].join(' @ '), function () {
     const dbNames = await CouchContinuum.allDbs(couchUrl)
     assert(dbNames.length > 0)
     dbNames.forEach((dbName) => {
-      assert.notEqual(dbName[0], '_')
+      assert.notStrictEqual(dbName[0], '_')
     })
     assert(dbNames.includes(dbName))
   })

@@ -249,7 +249,7 @@ class CouchContinuum {
       return { jobs: jobs || [] }
     })
     for (let { database } of [...jobs, ...activeTasks]) {
-      assert.notEqual(database, dbName, `${dbName} is still in use.`)
+      assert.notStrictEqual(database, dbName, `${dbName} is still in use.`)
     }
   }
 
