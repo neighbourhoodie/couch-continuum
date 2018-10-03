@@ -1,11 +1,11 @@
 const assert = require('assert')
 const path = require('path')
 const ProgressBar = require('progress')
-const { readFile, unlink, writeFile } = require('fs').promises
 
 const log = require('./lib/log')
 const request = require('./lib/request')
 const { name } = require('./package.json')
+const { readFile, unlink, writeFile } = require('./lib/fs')
 
 const checkpoint = path.join(__dirname, '.checkpoint')
 
