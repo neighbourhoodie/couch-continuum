@@ -11,28 +11,28 @@ HELPERS
  */
 
 function getContinuum ({
-  copyName,
   couchUrl,
-  dbName,
   filterTombstones,
   interval,
   n,
   placement,
   q,
   replicateSecurity,
+  source,
+  target,
   verbose
 }) {
   if (verbose) process.env.LOG = true
   return new CouchContinuum({
-    copyName,
     couchUrl,
-    dbName,
     filterTombstones,
     interval,
     n,
     placement,
     q,
-    replicateSecurity
+    replicateSecurity,
+    source,
+    target
   })
 }
 
@@ -74,30 +74,15 @@ require('yargs')
     command: 'start',
     aliases: ['$0'],
     description: 'Migrate a database to new settings.',
-    builder: function (yargs) {
-      yargs.options({
-        dbName: {
-          alias: 'N',
-          description: 'The name of the database to modify.',
-          required: true,
-          type: 'string'
-        },
-        copyName: {
-          alias: 'c',
-          description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
-          type: 'string'
-        }
-      })
-    },
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Migrating database '${argv.dbName}'...`)
+      log(`Migrating database: ${continuum.source.host}${continuum.source.path}`)
       try {
         await continuum.createReplica()
         const consent = await getConsent()
         if (!consent) return log('Could not acquire consent. Exiting...')
         await continuum.replacePrimary()
-        console.log(`Migrated database: ${argv.dbName}.`)
+        console.log(`Migrated database: ${continuum.source.host}${continuum.source.path}`)
       } catch (error) { catchError(error) }
     }
   })
@@ -105,27 +90,12 @@ require('yargs')
     command: 'create-replica',
     aliases: ['create', 'replica'],
     description: 'Create a replica of the given primary.',
-    builder: function (yargs) {
-      yargs.options({
-        dbName: {
-          alias: 'n',
-          description: 'The name of the database to modify.',
-          required: true,
-          type: 'string'
-        },
-        copyName: {
-          alias: 'c',
-          description: 'The name of the database to use as a replica. Defaults to {dbName}_temp_copy',
-          type: 'string'
-        }
-      })
-    },
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Creating replica of ${continuum.db1} at ${continuum.db2}`)
+      log(`Creating replica of ${continuum.source.host}${continuum.source.path} at ${continuum.target.host}${continuum.target.path}`)
       try {
         await continuum.createReplica()
-        console.log(`Created replica of ${continuum.db1}.`)
+        console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
       } catch (error) { catchError(error) }
     }
   })
@@ -135,12 +105,12 @@ require('yargs')
     description: 'Replace the given primary with the indicated replica.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Replacing primary ${continuum.db1} with ${continuum.db2}...`)
+      log(`Replacing primary ${continuum.source.host}${continuum.source.path} with ${continuum.target.host}${continuum.target.path}`)
       try {
         const consent = await getConsent()
         if (!consent) return log('Could not acquire consent. Exiting...')
         await continuum.replacePrimary()
-        console.log(`Successfully replaced ${continuum.db1}`)
+        console.log(`Successfully replaced ${continuum.source.host}${continuum.source.path}`)
       } catch (error) { catchError(error) }
     }
   })
@@ -163,11 +133,28 @@ require('yargs')
         log('Replacing primaries...')
         await CouchContinuum.replacePrimaries(continuums)
         await CouchContinuum.removeCheckpoint()
-        console.log(`Successfully migrated ${dbNames.join(', ')}.`)
+        console.log(`Successfully migrated databases: ${dbNames.join(', ')}`)
       } catch (error) { catchError(error) }
     }
   })
+  // backwards compat with old flag names
+  .alias('source', 'dbNames')
+  .alias('source', 'N')
+  .alias('target', 'copyName')
+  .alias('target', 'c')
+  // actual options
   .options({
+    source: {
+      alias: 's',
+      description: 'The name or URL of a database to use as a primary.',
+      required: true,
+      type: 'string'
+    },
+    target: {
+      alias: 't',
+      description: 'The name or URL of a database to use as a replica. Defaults to {source}_temp_copy',
+      type: 'string'
+    },
     couchUrl: {
       alias: 'u',
       description: 'The URL of the CouchDB cluster to act upon.',

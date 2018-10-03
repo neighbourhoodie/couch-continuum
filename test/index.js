@@ -51,7 +51,7 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should create replicas repeatedly OK', async function () {
-    const options = { couchUrl, dbName, q }
+    const options = { couchUrl, source: dbName, q }
     const continuum = new CouchContinuum(options)
     await continuum.createReplica()
     await continuum.createReplica()
@@ -59,7 +59,7 @@ describe([name, version].join(' @ '), function () {
 
   it('should replicate and replace a primary', async function () {
     this.timeout(30 * 1000) // 30s
-    const options = { couchUrl, dbName, q }
+    const options = { couchUrl, source: dbName, q }
     const continuum = new CouchContinuum(options)
     // create a replica and replace the primary
     await continuum.createReplica()
@@ -70,13 +70,13 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should check if a db is in use', async function () {
-    const continuum = new CouchContinuum({ couchUrl, dbName, q })
+    const continuum = new CouchContinuum({ couchUrl, source: dbName, q })
     await continuum._isInUse(dbName)
   })
 
   it('should filter tombstones', async function () {
     if (this.couchVersion < '2') return this.skip() // 1.x needs a special index
-    const options = { couchUrl, dbName, filterTombstones: true }
+    const options = { couchUrl, source: dbName, filterTombstones: true }
     // get tombstone
     const doc = await request({ url: `${couchUrl}/${dbName}/doc_1`, json: true })
     await request({ url: `${couchUrl}/${dbName}/doc_1?rev=${doc._rev}`, method: 'DELETE' })
@@ -96,7 +96,7 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should modify n', async function () {
-    const options = { couchUrl, dbName, n: 1 }
+    const options = { couchUrl, source: dbName, n: 1 }
     const continuum = new CouchContinuum(options)
     await continuum.createReplica()
     const url = [couchUrl, continuum.db2].join('/')
@@ -109,7 +109,7 @@ describe([name, version].join(' @ '), function () {
 
   it('should migrate all OK', async function () {
     this.timeout(30 * 1000)
-    const continuums = [new CouchContinuum({ couchUrl, dbName, q })]
+    const continuums = [new CouchContinuum({ couchUrl, source: dbName, q })]
     await CouchContinuum.createReplicas(continuums)
     await CouchContinuum.replacePrimaries(continuums)
   })
@@ -130,32 +130,44 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should handle availability OK', async function () {
-    const continuum = new CouchContinuum({ couchUrl, dbName })
-    let available = await continuum._isAvailable()
+    const continuum = new CouchContinuum({ couchUrl, source: dbName })
+    let available = await CouchContinuum._isAvailable(continuum.source.href)
     // available by default
     assert.strictEqual(available, true)
     // sets from undefined ok
-    await continuum._setAvailable()
-    available = await continuum._isAvailable()
+    await CouchContinuum._setAvailable(continuum.source.href)
+    available = await CouchContinuum._isAvailable(continuum.source.href)
     assert.strictEqual(available, true)
     // sets unavailable consecutively ok
-    await continuum._setUnavailable()
-    available = await continuum._isAvailable()
+    await CouchContinuum._setUnavailable(continuum.source.href)
+    available = await CouchContinuum._isAvailable(continuum.source.href)
     assert.strictEqual(available, false)
-    await continuum._setUnavailable()
-    available = await continuum._isAvailable()
+    await CouchContinuum._setUnavailable(continuum.source.href)
+    available = await CouchContinuum._isAvailable(continuum.source.href)
     assert.strictEqual(available, false)
     // sets available consecutively ok
-    await continuum._setAvailable()
-    available = await continuum._isAvailable()
+    await CouchContinuum._setAvailable(continuum.source.href)
+    available = await CouchContinuum._isAvailable(continuum.source.href)
     assert.strictEqual(available, true)
-    await continuum._setAvailable()
-    available = await continuum._isAvailable()
+    await CouchContinuum._setAvailable(continuum.source.href)
+    available = await CouchContinuum._isAvailable(continuum.source.href)
     assert.strictEqual(available, true)
   })
 
+  it('should handle remote source and target URLs', function () {
+    const source = 'http://localhost:5985/hello-world'
+    const target = 'http://localhost:5986/ahoy-planet'
+    const continuum = new CouchContinuum({ couchUrl, source, target })
+    assert.strictEqual(continuum.source.port, '5985')
+    assert.strictEqual(continuum.target.port, '5986')
+    // also works with local target
+    const localTarget = 'ahoy-planet'
+    const continuum2 = new CouchContinuum({ couchUrl, source, target: localTarget })
+    assert.strictEqual(continuum2.target.port, continuum2.url.port)
+  })
+
   it('should replicate security OK', async function () {
-    const continuum = new CouchContinuum({ couchUrl, dbName, replicateSecurity: true })
+    const continuum = new CouchContinuum({ couchUrl, source: dbName, replicateSecurity: true })
     const security = { members: { roles: ['hello'], names: ['world'] } }
     await request({
       url: `${couchUrl}/${dbName}/_security`,

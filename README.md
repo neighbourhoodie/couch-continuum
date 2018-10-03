@@ -84,55 +84,63 @@ Commands:
                                    settings.                      [aliases: all]
 
 Options:
-  --version                Show version number                         [boolean]
-  --couchUrl, -u           The URL of the CouchDB cluster to act upon.
+  --version                     Show version number                    [boolean]
+  --source, --dbNames, -N, -s   The name or URL of a database to use as a
+                                primary.                     [string] [required]
+  --target, --copyName, -c, -t  The name or URL of a database to use as a
+                                replica. Defaults to {source}_temp_copy [string]
+  --couchUrl, -u                The URL of the CouchDB cluster to act upon.
                                [default: "http://admin:password@localhost:5984"]
-  --interval, -i           How often (in milliseconds) to check replication
-                           tasks for progress.                   [default: 1000]
-  -q                       The desired "q" value for the new database.  [number]
-  -n                       The desired "n" value for the new database.  [number]
-  --verbose, -v            Enable verbose logging.                     [boolean]
-  --placement, -p          Placement rule for the affected database(s). [string]
-  --filterTombstones, -f   Filter tombstones during replica creation. Does not
-                           work with CouchDB 1.x                [default: false]
-  --replicateSecurity, -r  Replicate a database's /_security object in addition
-                           to its documents.                    [default: false]
-  --config                 Path to JSON config file
-  --dbName, -N             The name of the database to modify.
-                                                             [string] [required]
-  --copyName, -c           The name of the database to use as a replica.
-                           Defaults to {dbName}_temp_copy               [string]
-  -h, --help               Show help                                   [boolean]
-
+  --interval, -i                How often (in milliseconds) to check replication
+                                tasks for progress.              [default: 1000]
+  -q                            The desired "q" value for the new database.
+                                                                        [number]
+  -n                            The desired "n" value for the new database.
+                                                                        [number]
+  --verbose, -v                 Enable verbose logging.                [boolean]
+  --placement, -p               Placement rule for the affected database(s).
+                                                                        [string]
+  --filterTombstones, -f        Filter tombstones during replica creation. Does
+                                not work with CouchDB 1.x       [default: false]
+  --replicateSecurity, -r       Replicate a database's /_security object in
+                                addition to its documents.      [default: false]
+  --config                      Path to JSON config file
+  -h, --help                    Show help                              [boolean]
 ```
 
 The verbose output will inform you of each stage of the tool's operations. For example:
 
 ```
-$ couch-continuum -N hello-world -q 4 -u http://... -v
-[couch-continuum] Created new continuum: {"db1":"hello-world","db2":"hello-world_temp_copy","interval":1000,"q":4,"n":1}
-[couch-continuum] Migrating database 'hello-world'...
-[couch-continuum] Creating replica hello-world_temp_copy...
+$ couch-continuum -s hello-world -q 4 -u https://... -v
+[couch-continuum] Created new continuum: {
+  "url": "localhost:5984",
+  "source": "localhost:5984/hello-world",
+  "target": "localhost:5984/hello-world_temp_copy",
+  "interval": 1000,
+  "q": 4
+}
+[couch-continuum] Migrating database: localhost:5984/hello-world
+[couch-continuum] Creating replica localhost:5984/hello-world_temp_copy...
 [couch-continuum] [0/5] Checking if primary is in use...
-[couch-continuum] [1/5] Creating replica db: hello-world_temp_copy
+[couch-continuum] [1/5] Creating replica db: localhost:5984/hello-world_temp_copy
 [couch-continuum] [2/5] Beginning replication of primary to replica...
 [couch-continuum] [3/5] Verifying primary did not change during replication...
 [couch-continuum] [4/5] Verifying primary and replica match...
 [couch-continuum] [5/5] Primary copied to replica.
 Ready to replace the primary with the replica. Continue? [y/N] y
-[couch-continuum] Replacing primary hello-world...
+[couch-continuum] Replacing primary localhost:5984/hello-world using localhost:5984/hello-world_temp_copy...
 [couch-continuum] [0/8] Checking if primary is in use...
 [couch-continuum] [1/8] Verifying primary and replica match...
 [couch-continuum] [2/8] Destroying primary...
 [couch-continuum] [3/8] Recreating primary with new settings...
-[couch-continuum] Recreating primary hello-world
+[couch-continuum] Recreating primary localhost:5984/hello-world
 [couch-continuum] (====================) 100% 0.0s
 [couch-continuum] [4/8] Setting primary to unavailable.
 [couch-continuum] [5/8] Beginning replication of replica to primary...
 [couch-continuum] [6/8] Replicated. Destroying replica...
 [couch-continuum] [7/8] Setting primary to available.
 [couch-continuum] [8/8] Primary migrated to new settings.
-[couch-continuum] ... success!
+Migrated database: localhost:5984/hello-world
 ```
 
 ## Why "Continuum"?
