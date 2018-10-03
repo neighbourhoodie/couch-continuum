@@ -66,7 +66,17 @@ class CouchContinuum {
     await CouchContinuum.removeCheckpoint()
   }
 
-  constructor ({ couchUrl, dbName, copyName, filterTombstones, placement, interval, q, n }) {
+  constructor ({
+    copyName,
+    couchUrl,
+    dbName,
+    filterTombstones,
+    interval,
+    n,
+    placement,
+    q,
+    replicateSecurity
+  }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(dbName, 'The Continuum requires a target database.')
     this.url = couchUrl
@@ -77,13 +87,16 @@ class CouchContinuum {
     this.n = n
     this.placement = placement
     this.filterTombstones = filterTombstones
+    this.replicateSecurity = replicateSecurity
     const options = {
       db1: this.db1,
       db2: this.db2,
+      filterTombstones: this.filterTombstones,
       interval: this.interval,
-      q: this.q,
       n: this.n,
-      placement: this.placement
+      placement: this.placement,
+      q: this.q,
+      replicateSecurity: this.replicateSecurity
     }
     log(`Created new continuum: ${JSON.stringify(options, undefined, 2)}`)
   }
@@ -127,6 +140,19 @@ class CouchContinuum {
       method: 'POST',
       json: { source, target, selector }
     })
+    // copy security object over
+    if (this.replicateSecurity) {
+      log(`Replicating ${source}/_security to ${target}...`)
+      const security = await request({
+        url: `${this.url}/${source}/_security`,
+        json: true
+      })
+      await request({
+        url: `${this.url}/${target}/_security`,
+        method: 'PUT',
+        json: security
+      })
+    }
     bar.tick(total)
     clearInterval(timer)
   }
