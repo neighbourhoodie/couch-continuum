@@ -130,7 +130,7 @@ class CouchContinuum {
     // what's great for a snack and fits on your back
     // it's log it's log it's log
     // everyone wants a log
-    const options = {
+    log(`Created new continuum: ${JSON.stringify({
       filterTombstones: this.filterTombstones,
       interval: this.interval,
       n: this.n,
@@ -140,8 +140,7 @@ class CouchContinuum {
       source: `${this.source.host}${this.source.path}`,
       target: `${this.target.host}${this.target.path}`,
       url: this.url.host
-    }
-    log(`Created new continuum: ${JSON.stringify(options, undefined, 2)}`)
+    }, undefined, 2)}`)
   }
 
   async _createDb (dbUrl) {
