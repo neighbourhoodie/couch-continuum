@@ -153,4 +153,21 @@ describe([name, version].join(' @ '), function () {
     available = await continuum._isAvailable()
     assert.strictEqual(available, true)
   })
+
+  it('should replicate security OK', async function () {
+    const continuum = new CouchContinuum({ couchUrl, dbName, replicateSecurity: true })
+    const security = { members: { roles: ['hello'], names: ['world'] } }
+    await request({
+      url: `${couchUrl}/${dbName}/_security`,
+      method: 'PUT',
+      json: security
+    })
+    await continuum.createReplica()
+    const replicaSec = await request({
+      url: `${couchUrl}/${dbName}_temp_copy/_security`,
+      json: true
+    })
+    assert.strictEqual(security.members.roles[0], replicaSec.members.roles[0])
+    assert.strictEqual(security.members.names[0], replicaSec.members.names[0])
+  })
 })
