@@ -1,27 +1,40 @@
 #!/usr/bin/env node
 'use strict'
 
-const CouchContinuum = require('.')
 const readline = require('readline')
+
+const CouchContinuum = require('.')
+const log = require('./lib/log')
 
 /*
 HELPERS
  */
 
-const prefix = '[couch-continuum]'
-function log () {
-  arguments[0] = [prefix, arguments[0]].join(' ')
-  console.log.apply(console, arguments)
-}
-
-function getContinuum (argv) {
-  const { copyName, couchUrl, dbName, filterTombstones, interval, n, placement, q, verbose } = argv
+function getContinuum ({
+  copyName,
+  couchUrl,
+  dbName,
+  filterTombstones,
+  interval,
+  n,
+  placement,
+  q,
+  verbose
+}) {
   if (verbose) process.env.LOG = true
-  const options = { copyName, couchUrl, dbName, filterTombstones, interval, n, placement, q }
-  return new CouchContinuum(options)
+  return new CouchContinuum({
+    copyName,
+    couchUrl,
+    dbName,
+    filterTombstones,
+    interval,
+    n,
+    placement,
+    q
+  })
 }
 
-function getConsent (question) {
+async function getConsent (question) {
   question = question || 'Ready to replace the primary with the replica. Continue? [y/N] '
   const rl = readline.createInterface({
     input: process.stdin,
@@ -37,15 +50,15 @@ function getConsent (question) {
 }
 
 function catchError (error) {
-  log('ERROR')
+  console.log('ERROR')
   if (error.error === 'not_found') {
-    log('Primary database does not exist. There is nothing to migrate.')
+    console.log('Primary database does not exist. There is nothing to migrate.')
   } else if (error.error === 'unauthorized') {
-    log('Could not authenticate with CouchDB. Are the credentials correct?')
+    console.log('Could not authenticate with CouchDB. Are the credentials correct?')
   } else if (error.code === 'EACCES') {
-    log('Could not access the checkpoint document. Are you running as a different user?')
+    console.log('Could not access the checkpoint document. Are you running as a different user?')
   } else {
-    log('Unexpected error: %j', error)
+    console.log('Unexpected error: %j', error)
   }
   process.exit(1)
 }
@@ -74,17 +87,16 @@ require('yargs')
         }
       })
     },
-    handler: function (argv) {
+    handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Migrating database '${argv.dbName}'...`)
-      continuum.createReplica().then(function () {
-        return getConsent()
-      }).then((consent) => {
+      try {
+        await continuum.createReplica()
+        const consent = await getConsent()
         if (!consent) return log('Could not acquire consent. Exiting...')
-        return continuum.replacePrimary().then(() => {
-          log('... success!')
-        })
-      }).catch(catchError)
+        await continuum.replacePrimary()
+        console.log(`Migrated database: ${argv.dbName}.`)
+      } catch (error) { catchError(error) }
     }
   })
   .command({
@@ -106,66 +118,64 @@ require('yargs')
         }
       })
     },
-    handler: function (argv) {
+    handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Creating replica of ${continuum.db1} at ${continuum.db2}`)
-      continuum.createReplica().then(() => {
-        log('... success!')
-      }).catch(catchError)
+      try {
+        await continuum.createReplica()
+        console.log(`Created replica of ${continuum.db1}.`)
+      } catch (error) { catchError(error) }
     }
   })
   .command({
     command: 'replace-primary',
     aliases: ['replace', 'primary'],
     description: 'Replace the given primary with the indicated replica.',
-    handler: function (argv) {
+    handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Replacing primary ${continuum.db1} with ${continuum.db2}...`)
-      getConsent().then((consent) => {
+      try {
+        const consent = await getConsent()
         if (!consent) return log('Could not acquire consent. Exiting...')
-        return continuum.replacePrimary().then(() => {
-          log('... success!')
-        })
-      }).catch(catchError)
+        await continuum.replacePrimary()
+        console.log(`Successfully replaced ${continuum.db1}`)
+      } catch (error) { catchError(error) }
     }
   })
   .command({
     command: 'migrate-all',
     aliases: ['all'],
     description: 'Migrate all non-special databases to new settings.',
-    handler: function (argv) {
-      const { couchUrl, filterTombstones, interval, placement, q, verbose } = argv
+    handler: async function ({
+      couchUrl,
+      filterTombstones,
+      interval,
+      placement,
+      q,
+      verbose
+    }) {
       if (verbose) { process.env.LOG = true }
-      CouchContinuum
-        .getCheckpoint(couchUrl)
-        .then((dbNames) => {
-          return dbNames.map((dbName) => {
-            const options = { couchUrl, dbName, filterTombstones, interval, placement, q }
-            return new CouchContinuum(options)
+      try {
+        const dbNames = await CouchContinuum.getRemaining(couchUrl)
+        const continuums = dbNames.map((dbName) => {
+          return new CouchContinuum({
+            couchUrl,
+            dbName,
+            filterTombstones,
+            interval,
+            placement,
+            q
           })
         })
-        .then((continuums) => {
-          log('Creating replicas...')
-          return CouchContinuum
-            .createReplicas(continuums)
-            .then(() => {
-              return getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
-            })
-            .then((consent) => {
-              if (!consent) return log('Could not acquire consent. Exiting...')
-              log('Replacing primaries...')
-              return CouchContinuum
-                .replacePrimaries(continuums)
-            })
-        })
-        .then(() => {
-          return CouchContinuum
-            .removeCheckpoint()
-        })
-        .then(() => {
-          log('...success!')
-        })
-        .catch(catchError)
+        log('Creating replicas...')
+        await CouchContinuum.createReplicas(continuums)
+        const consent = await getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
+        if (!consent) return console.log('Could not acquire consent. Exiting...')
+        log('Replacing primaries...')
+        await CouchContinuum.replacePrimaries(continuums)
+        await CouchContinuum.removeCheckpoint()
+        console.log(`Successfully migrated ${dbNames.join(', ')}.`)
+      } catch (error) { catchError(error) }
     }
   })
   .options({
@@ -199,7 +209,7 @@ require('yargs')
     },
     filterTombstones: {
       alias: 'f',
-      description: 'Filter tombstones during replica creation.',
+      description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
       default: false
     }
   })
