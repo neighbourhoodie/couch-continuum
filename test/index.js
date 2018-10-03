@@ -1,4 +1,4 @@
-/* globals describe, it, beforeEach, afterEach */
+/* globals describe, it, beforeEach, before, afterEach */
 
 const assert = require('assert')
 const CouchContinuum = require('..')
@@ -10,6 +10,11 @@ describe([name, version].join(' @ '), function () {
   const couchUrl = process.env.COUCH_URL || 'http://localhost:5984'
   const dbName = 'test-continuum'
   const q = 4
+
+  before(async function () {
+    const { version } = await request({ url: couchUrl, json: true })
+    this.couchVersion = version
+  })
 
   beforeEach(async function () {
     // ensure db exists
@@ -70,6 +75,7 @@ describe([name, version].join(' @ '), function () {
   })
 
   it('should filter tombstones', async function () {
+    if (this.couchVersion < '2') return this.skip() // 1.x needs a special index
     const options = { couchUrl, dbName, filterTombstones: true }
     // get tombstone
     const doc = await request({ url: `${couchUrl}/${dbName}/doc_1`, json: true })

@@ -77,14 +77,15 @@ class CouchContinuum {
     this.n = n
     this.placement = placement
     this.filterTombstones = filterTombstones
-    log('Created new continuum: %j', {
+    const options = {
       db1: this.db1,
       db2: this.db2,
       interval: this.interval,
       q: this.q,
       n: this.n,
       placement: this.placement
-    })
+    }
+    log(`Created new continuum: ${JSON.stringify(options, undefined, 2)}`)
   }
 
   async _createDb (dbName) {

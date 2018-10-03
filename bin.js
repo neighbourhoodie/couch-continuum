@@ -209,7 +209,7 @@ require('yargs')
     },
     filterTombstones: {
       alias: 'f',
-      description: 'Filter tombstones during replica creation.',
+      description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
       default: false
     }
   })
