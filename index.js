@@ -191,13 +191,8 @@ class CouchContinuum {
     const { jobs } = await request({
       url: [this.url, '_scheduler', 'jobs'].join('/'),
       json: true
-    }).catch((error) => {
-      // catch 1.x
-      if (error.error === 'illegal_database_name') {
-        return { jobs: [] }
-      } else {
-        throw error
-      }
+    }).then(({ jobs }) => {
+      return { jobs: jobs || [] }
     })
     for (let { database } of [...jobs, ...activeTasks]) {
       assert.notEqual(database, dbName, `${dbName} is still in use.`)
