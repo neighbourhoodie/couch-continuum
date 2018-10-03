@@ -1,6 +1,7 @@
 const assert = require('assert')
 const path = require('path')
 const ProgressBar = require('progress')
+const urlParse = require('url').parse
 
 const log = require('./lib/log')
 const request = require('./lib/request')
@@ -59,27 +60,69 @@ class CouchContinuum {
 
   static async replacePrimaries (continuums) {
     for (let continuum of continuums) {
-      log('Replacing primary "%s" with replica "%s"', continuum.db1, continuum.db2)
       await continuum.replacePrimary()
-      await CouchContinuum.makeCheckpoint(continuum.db1)
+      await CouchContinuum.makeCheckpoint(continuum.source.path.slice(1))
     }
     await CouchContinuum.removeCheckpoint()
   }
 
-  constructor ({ couchUrl, dbName, copyName, filterTombstones, placement, interval, q, n }) {
+  static async _isAvailable (dbUrl) {
+    const { down } = await request({
+      url: `${dbUrl}/_local/in-maintenance`,
+      json: true
+    })
+    return !down
+  }
+
+  static async _setUnavailable (dbUrl) {
+    await request({
+      url: `${dbUrl}/_local/in-maintenance`,
+      method: 'PUT',
+      json: { down: true }
+    })
+  }
+
+  static async _setAvailable (dbUrl) {
+    const url = `${dbUrl}/_local/in-maintenance`
+    const { _rev: rev } = await request({ url, json: true })
+    return request({ url, qs: { rev }, method: 'DELETE' })
+  }
+
+  constructor ({ couchUrl, source, target, filterTombstones, placement, interval, q, n }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
-    assert(dbName, 'The Continuum requires a target database.')
-    this.url = couchUrl
-    this.db1 = encodeURIComponent(dbName)
-    this.db2 = copyName ? encodeURIComponent(copyName) : `${this.db1}_temp_copy`
+    assert(source, 'The Continuum requires a target database.')
+    this.url = urlParse(couchUrl)
+    // get source url
+    const parsedSource = urlParse(source)
+    if (parsedSource.host) {
+      this.source = parsedSource
+    } else {
+      this.source = urlParse(`${this.url.href}${encodeURIComponent(source)}`)
+    }
+    // get target url
+    if (target) {
+      const parsedTarget = urlParse(target)
+      if (parsedTarget.host) {
+        this.target = parsedTarget
+      } else {
+        this.target = urlParse(`${this.url.href}${encodeURIComponent(target)}`)
+      }
+    } else {
+      this.target = urlParse(`${this.source.href}_temp_copy`)
+    }
+    // save other variables
     this.interval = interval || 1000
     this.q = q
     this.n = n
     this.placement = placement
     this.filterTombstones = filterTombstones
+    // what's great for a snack and fits on your back
+    // it's log it's log it's log
+    // everyone wants a log
     const options = {
-      db1: this.db1,
-      db2: this.db2,
+      url: this.url.host,
+      source: `${this.source.host}${this.source.path}`,
+      target: `${this.target.host}${this.target.path}`,
       interval: this.interval,
       q: this.q,
       n: this.n,
@@ -88,22 +131,31 @@ class CouchContinuum {
     log(`Created new continuum: ${JSON.stringify(options, undefined, 2)}`)
   }
 
-  async _createDb (dbName) {
+  async _createDb (dbUrl) {
     const qs = {}
     if (this.q) { qs.q = this.q }
     if (this.n) { qs.n = this.n }
     if (this.placement) { qs.placement = this.placement }
-    return request({ url: `${this.url}/${dbName}`, method: 'PUT', qs, json: true })
+    return request({
+      url: dbUrl,
+      method: 'PUT',
+      qs,
+      json: true
+    })
   }
 
-  async _destroyDb (dbName) {
-    return request({ url: `${this.url}/${dbName}`, method: 'DELETE', json: true })
+  async _destroyDb (dbUrl) {
+    return request({
+      url: dbUrl,
+      method: 'DELETE',
+      json: true
+    })
   }
 
   async _replicate (source, target, selector) {
-    const { doc_count: total } = await request({ url: `${this.url}/${source}`, json: true })
+    const { doc_count: total } = await request({ url: source, json: true })
     if (total === 0) return null
-    console.log(`[${name}] Replicating ${source} to ${target}`)
+    console.log(`[${name}] Replicating ${target.host}${source.path} to ${target.host}${target.path}`)
     const text = `[${name}] (:bar) :percent :etas`
     const bar = new ProgressBar(text, {
       incomplete: ' ',
@@ -113,7 +165,7 @@ class CouchContinuum {
     var current = 0
     const timer = setInterval(async () => {
       const { doc_count: latest } = await request({
-        url: `${this.url}/${target}`,
+        url: target.href,
         json: true
       })
       const delta = latest - current
@@ -123,9 +175,9 @@ class CouchContinuum {
       // TODO catch errors produced by this loop
     }, this.interval)
     await request({
-      url: `${this.url}/_replicate`,
+      url: `${this.url.href}_replicate`,
       method: 'POST',
-      json: { source, target, selector }
+      json: { source: source.href, target: target.href, selector }
     })
     bar.tick(total)
     clearInterval(timer)
@@ -133,36 +185,14 @@ class CouchContinuum {
 
   async _verifyReplica () {
     const { doc_count: docCount1 } = await request({
-      url: `${this.url}/${this.db1}`,
+      url: this.source.href,
       json: true
     })
     const { doc_count: docCount2 } = await request({
-      url: `${this.url}/${this.db1}`,
+      url: this.target.href,
       json: true
     })
     assert.strictEqual(docCount1, docCount2, 'Primary and replica do not have the same number of documents.')
-  }
-
-  async _isAvailable (dbName) {
-    const { down } = await request({
-      url: `${this.url}/${dbName || this.db1}/_local/in-maintenance`,
-      json: true
-    })
-    return !down
-  }
-
-  async _setUnavailable () {
-    await request({
-      url: `${this.url}/${this.db1}/_local/in-maintenance`,
-      method: 'PUT',
-      json: { down: true }
-    })
-  }
-
-  async _setAvailable () {
-    const url = `${this.url}/${this.db1}/_local/in-maintenance`
-    const { _rev: rev } = await request({ url, json: true })
-    return request({ url, qs: { rev }, method: 'DELETE' })
   }
 
   /**
@@ -170,11 +200,8 @@ class CouchContinuum {
    * @param  {String} dbName  Name of the database to check.
    * @return {String}         The database's update sequence.
    */
-  async _getUpdateSeq (dbName) {
-    const { update_seq: updateSeq } = await request({
-      url: `${this.url}/${dbName}`,
-      json: true
-    })
+  async _getUpdateSeq (dbUrl) {
+    const { update_seq: updateSeq } = await request({ url: dbUrl, json: true })
     return updateSeq
   }
 
@@ -185,12 +212,13 @@ class CouchContinuum {
    * @return {Boolean}            Whether the database is in use.
    */
   async _isInUse (dbName) {
+    // TODO check all known hosts
     const activeTasks = await request({
-      url: [this.url, '_active_tasks'].join('/'),
+      url: `${this.url.href}_active_tasks`,
       json: true
     })
     const { jobs } = await request({
-      url: [this.url, '_scheduler', 'jobs'].join('/'),
+      url: `${this.url.href}_scheduler/jobs`,
       json: true
     }).then(({ jobs }) => {
       return { jobs: jobs || [] }
@@ -206,39 +234,39 @@ class CouchContinuum {
    *                   the replica has been created
    */
   async createReplica () {
-    log(`Creating replica ${this.db2}...`)
+    log(`Creating replica ${this.target.host}${this.target.path}...`)
     log('[0/5] Checking if primary is in use...')
-    await this._isInUse(this.db1)
-    const lastSeq1 = await this._getUpdateSeq(this.db1)
-    log('[1/5] Creating replica db:', this.db2)
-    await this._createDb(this.db2)
+    await this._isInUse(this.source.path.slice(1))
+    const lastSeq1 = await this._getUpdateSeq(this.source.href)
+    log(`[1/5] Creating replica db: ${this.target.host}${this.target.path}`)
+    await this._createDb(this.target.href)
     log('[2/5] Beginning replication of primary to replica...')
     const selector = this.filterTombstones ? {
       _deleted: { $exists: false }
     } : undefined
-    await this._replicate(this.db1, this.db2, selector)
+    await this._replicate(this.source, this.target, selector)
     log('[3/5] Verifying primary did not change during replication...')
-    const lastSeq2 = await this._getUpdateSeq(this.db1)
-    assert(lastSeq1 <= lastSeq2, `${this.db1} is still receiving updates. Exiting...`)
+    const lastSeq2 = await this._getUpdateSeq(this.source.href)
+    assert(lastSeq1 <= lastSeq2, `${this.source.host}${this.source.path} is still receiving updates. Exiting...`)
     log('[4/5] Verifying primary and replica match...')
     await this._verifyReplica()
     log('[5/5] Primary copied to replica.')
   }
 
   async replacePrimary () {
-    log(`Replacing primary ${this.db1}...`)
+    log(`Replacing primary ${this.source.host}${this.source.path} using ${this.target.host}${this.target.path}...`)
     log('[0/8] Checking if primary is in use...')
-    await this._isInUse(this.db1)
+    await this._isInUse(this.source.path.slice(1))
     log('[1/8] Verifying primary and replica match...')
     await this._verifyReplica()
     log('[2/8] Destroying primary...')
-    await this._destroyDb(this.db1)
+    await this._destroyDb(this.source.href)
     log('[3/8] Recreating primary with new settings...')
-    await this._createDb(this.db1)
+    await this._createDb(this.source.href)
     await new Promise((resolve) => {
       // sleep, giving the cluster a chance to sort
       // out the rapid recreation.
-      console.log(`[${name}] Recreating primary ${this.db1}`)
+      console.log(`[${name}] Recreating primary ${this.source.host}${this.source.path}`)
       const text = `[${name}] (:bar) :percent :etas`
       const bar = new ProgressBar(text, {
         incomplete: ' ',
@@ -254,13 +282,13 @@ class CouchContinuum {
       }, 100)
     })
     log('[4/8] Setting primary to unavailable.')
-    await this._setUnavailable()
+    await CouchContinuum._setUnavailable(this.source.href)
     log('[5/8] Beginning replication of replica to primary...')
-    await this._replicate(this.db2, this.db1)
+    await this._replicate(this.target, this.source)
     log('[6/8] Replicated. Destroying replica...')
-    await this._destroyDb(this.db2)
+    await this._destroyDb(this.target.href)
     log('[7/8] Setting primary to available.')
-    await this._setAvailable()
+    await CouchContinuum._setAvailable(this.source.href)
     log('[8/8] Primary migrated to new settings.')
   }
 }
