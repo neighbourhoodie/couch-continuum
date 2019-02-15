@@ -1,7 +1,7 @@
 const assert = require('assert')
 const path = require('path')
 const ProgressBar = require('progress')
-const urlParse = require('url').parse
+const url = require('url')
 
 const log = require('./lib/log')
 const request = require('./lib/request')
@@ -10,13 +10,15 @@ const { readFile, unlink, writeFile } = require('./lib/fs')
 
 const checkpoint = path.join(__dirname, '.checkpoint')
 
+const TEMP_COPY_SUFFIX = 'temp_copy_'
+
 module.exports =
 class CouchContinuum {
   static async allDbs (url) {
     const allDbs = await request({ url: `${url}/_all_dbs`, json: true })
     return allDbs.filter((dbName) => {
       const isSpecial = (dbName[0] === '_') // ignore special dbs
-      const isReplica = dbName.indexOf('_temp_copy') > -1
+      const isReplica = dbName.indexOf(TEMP_COPY_SUFFIX) > -1
       return !isSpecial && !isReplica
     })
   }
@@ -101,24 +103,27 @@ class CouchContinuum {
   }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(source, 'The Continuum requires a source database.')
-    this.url = urlParse(couchUrl)
+    this.url = url.parse(couchUrl)
     // get source url
-    const parsedSource = urlParse(source)
+    const parsedSource = url.parse(source)
     if (parsedSource.host) {
       this.source = parsedSource
     } else {
-      this.source = urlParse(`${this.url.href}${encodeURIComponent(source)}`)
+      this.source = url.parse(`${this.url.href}${encodeURIComponent(source)}`)
     }
     // get target url
     if (target) {
-      const parsedTarget = urlParse(target)
+      const parsedTarget = url.parse(target)
       if (parsedTarget.host) {
         this.target = parsedTarget
       } else {
-        this.target = urlParse(`${this.url.href}${encodeURIComponent(target)}`)
+        this.target = url.parse(`${this.url.href}${encodeURIComponent(target)}`)
       }
     } else {
-      this.target = urlParse(`${this.source.href}_temp_copy`)
+      const tmpTarget = JSON.parse(JSON.stringify(this.source))
+      const tmpTargetNoLeadingSlash = tmpTarget.pathname.substr(1)
+      tmpTarget.pathname = `${TEMP_COPY_SUFFIX}${tmpTargetNoLeadingSlash}`
+      this.target = url.parse(url.format(tmpTarget))
     }
     // save other variables
     this.interval = interval || 1000

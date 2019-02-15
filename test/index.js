@@ -34,7 +34,7 @@ describe([name, version].join(' @ '), function () {
   afterEach(async function () {
     // destroy dbs
     await request({ url: `${couchUrl}/${dbName}`, method: 'DELETE' })
-    await request({ url: `${couchUrl}/${dbName}_temp_copy`, method: 'DELETE' })
+    await request({ url: `${couchUrl}/temp_copy_${dbName}`, method: 'DELETE' })
   })
 
   it('should exist', function () {
@@ -65,7 +65,7 @@ describe([name, version].join(' @ '), function () {
     await continuum.createReplica()
     await continuum.replacePrimary()
     // verify cleanup
-    const { error } = await request({ url: `${couchUrl}/${dbName}_temp_copy`, json: true })
+    const { error } = await request({ url: `${couchUrl}/temp_copy_${dbName}`, json: true })
     assert.strictEqual(error, 'not_found')
   })
 
@@ -90,7 +90,7 @@ describe([name, version].join(' @ '), function () {
     const continuum = new CouchContinuum(options)
     await continuum.createReplica()
     // check that tombstones were actually filtered
-    const { results: afterResults } = await request({ url: `${couchUrl}/${dbName}_temp_copy/_changes`, json: true })
+    const { results: afterResults } = await request({ url: `${couchUrl}/temp_copy_${dbName}/_changes`, json: true })
     const tombstones = afterResults.filter(({ deleted }) => { return deleted })
     assert.strictEqual(tombstones.length, 0)
   })
@@ -176,7 +176,7 @@ describe([name, version].join(' @ '), function () {
     })
     await continuum.createReplica()
     const replicaSec = await request({
-      url: `${couchUrl}/${dbName}_temp_copy/_security`,
+      url: `${couchUrl}/temp_copy_${dbName}/_security`,
       json: true
     })
     assert.strictEqual(security.members.roles[0], replicaSec.members.roles[0])
