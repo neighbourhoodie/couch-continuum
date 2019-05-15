@@ -14,11 +14,11 @@
   "dependencies": {
     "progress": "^2.0.3",
     "request": "^2.88.0",
-    "yargs": "^12.0.5"
+    "yargs": "^13.2.4"
   },
   "devDependencies": {
     "dependency-check": "^3.3.0",
-    "mocha": "^5.2.0",
+    "mocha": "^6.1.4",
     "standard": "^12.0.1"
   },
   "repository": {
