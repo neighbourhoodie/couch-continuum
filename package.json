@@ -19,7 +19,7 @@
   "devDependencies": {
     "dependency-check": "^3.3.0",
     "mocha": "^6.1.4",
-    "standard": "^12.0.1"
+    "standard": "^13.1.0"
   },
   "repository": {
     "type": "git",
