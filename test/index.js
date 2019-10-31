@@ -81,8 +81,8 @@ describe([name, version].join(' @ '), function () {
     const doc = await request({ url: `${couchUrl}/${dbName}/doc_1`, json: true })
     await request({ url: `${couchUrl}/${dbName}/doc_1?rev=${doc._rev}`, method: 'DELETE' })
     const { results: beforeResults } = await request({ url: `${couchUrl}/${dbName}/_changes`, json: true })
-    const [ tombstone ] = beforeResults.filter(({ deleted }) => { return deleted })
-    const { id, changes: [ { rev } ] } = tombstone
+    const [tombstone] = beforeResults.filter(({ deleted }) => { return deleted })
+    const { id, changes: [{ rev }] } = tombstone
     assert.strictEqual(doc._id, id)
     assert.strictEqual(doc._rev[0], '1')
     assert.strictEqual(rev[0], '2')
