@@ -1,6 +1,6 @@
 {
   "name": "couch-continuum",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "Tool for migrating CouchDB databases to new configuration values.",
   "main": "index.js",
   "bin": {
@@ -14,12 +14,12 @@
   "dependencies": {
     "progress": "^2.0.3",
     "request": "^2.88.0",
-    "yargs": "^14.2.0"
+    "yargs": "^15.3.1"
   },
   "devDependencies": {
     "dependency-check": "^4.1.0",
-    "mocha": "^6.2.2",
-    "standard": "^14.3.1"
+    "mocha": "^7.1.1",
+    "standard": "^14.3.3"
   },
   "repository": {
     "type": "git",
