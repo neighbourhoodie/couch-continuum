@@ -100,7 +100,18 @@ class CouchContinuum {
 
   static async _setUnavailable (dbUrl) {
     const url = `${dbUrl}/_local/in-maintenance`
-    await request({ url, method: 'PUT', json: { down: true } })
+    try {
+      // update
+      const { _rev: rev } = await request({ url, json: true })
+      return request({ url, json: { _rev: rev, down: true }, method: 'PUT' })
+    } catch (error) {
+      if (error.error === 'not_found') {
+        // create
+        await request({ url, method: 'PUT', json: { down: true } })
+      } else {
+        throw error
+      }
+    }
   }
 
   static async _setAvailable (dbUrl) {
@@ -110,7 +121,8 @@ class CouchContinuum {
       return request({ url, qs: { rev }, method: 'DELETE' })
     } catch (error) {
       if (error.error === 'not_found') {
-        await request({ url, json: { down: false }, method: 'PUT' })
+        // already available, nothing to do
+        return null
       } else {
         throw error
       }
@@ -278,18 +290,27 @@ class CouchContinuum {
    */
   async _isInUse (dbName) {
     // TODO check all known hosts
-    const activeTasks = await request({
-      url: `${this.url.href}_active_tasks`,
-      json: true
-    })
-    const { jobs } = await request({
-      url: `${this.url.href}_scheduler/jobs`,
-      json: true
-    }).then(({ jobs }) => {
-      return { jobs: jobs || [] }
-    })
-    for (const { database } of [...jobs, ...activeTasks]) {
-      assert.notStrictEqual(database, dbName, `${dbName} is still in use.`)
+    try {
+      const activeTasks = await request({
+        url: `${this.url.href}_active_tasks`,
+        json: true
+      })
+      const { jobs } = await request({
+        url: `${this.url.href}_scheduler/jobs`,
+        json: true
+      }).then(({ jobs }) => {
+        return { jobs: jobs || [] }
+      })
+      for (const { database } of [...jobs, ...activeTasks]) {
+        assert.notStrictEqual(database, dbName, `${dbName} is still in use.`)
+      }
+    } catch (error) {
+      if (error.error === 'illegal_database_name') {
+        // 1.x -- this block is just for travis' test conditions
+        return null
+      } else {
+        throw error
+      }
     }
   }
 
