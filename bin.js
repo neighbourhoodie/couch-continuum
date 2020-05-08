@@ -76,13 +76,13 @@ require('yargs')
     description: 'Migrate a database to new settings.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Migrating database: ${continuum.source.host}${continuum.source.path}`)
+      log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
       try {
         await continuum.createReplica()
         const consent = await getConsent()
         if (!consent) return log('Could not acquire consent. Exiting...')
         await continuum.replacePrimary()
-        console.log(`Migrated database: ${continuum.source.host}${continuum.source.path}`)
+        console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
       } catch (error) { catchError(error) }
     }
   })
@@ -92,7 +92,7 @@ require('yargs')
     description: 'Create a replica of the given primary.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Creating replica of ${continuum.source.host}${continuum.source.path} at ${continuum.target.host}${continuum.target.path}`)
+      log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
       try {
         await continuum.createReplica()
         console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
