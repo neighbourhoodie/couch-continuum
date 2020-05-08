@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict'
 
+const assert = require('assert').strict
 const readline = require('readline')
 
 const CouchContinuum = require('.')
@@ -60,7 +61,7 @@ function catchError (error) {
   } else if (error.code === 'EACCES') {
     console.log('Could not access the checkpoint document. Are you running as a different user?')
   } else {
-    console.log('Unexpected error: %j', error)
+    assert.fail(`Unexpected error: ${JSON.stringify(error)}`)
   }
   process.exit(1)
 }

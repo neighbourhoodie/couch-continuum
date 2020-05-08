@@ -1,6 +1,6 @@
 /* globals describe, it, beforeEach, before, afterEach */
 
-const assert = require('assert')
+const assert = require('assert').strict
 const CouchContinuum = require('..')
 const request = require('../lib/request')
 const { name, version } = require('../package.json')
