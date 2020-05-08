@@ -82,25 +82,39 @@ class CouchContinuum {
   }
 
   static async _isAvailable (dbUrl) {
-    const { down } = await request({
-      url: `${dbUrl}/_local/in-maintenance`,
-      json: true
-    })
-    return !down
+    try {
+      const { down } = await request({
+        url: `${dbUrl}/_local/in-maintenance`,
+        json: true
+      })
+      return !down
+    } catch (error) {
+      if (error.error !== 'not_found') {
+        throw error
+      } else {
+        // document doesn't exist, so, db must be available
+        return true
+      }
+    }
   }
 
   static async _setUnavailable (dbUrl) {
-    await request({
-      url: `${dbUrl}/_local/in-maintenance`,
-      method: 'PUT',
-      json: { down: true }
-    })
+    const url = `${dbUrl}/_local/in-maintenance`
+    await request({ url, method: 'PUT', json: { down: true } })
   }
 
   static async _setAvailable (dbUrl) {
     const url = `${dbUrl}/_local/in-maintenance`
-    const { _rev: rev } = await request({ url, json: true })
-    return request({ url, qs: { rev }, method: 'DELETE' })
+    try {
+      const { _rev: rev } = await request({ url, json: true })
+      return request({ url, qs: { rev }, method: 'DELETE' })
+    } catch (error) {
+      if (error.error === 'not_found') {
+        await request({ url, json: { down: false }, method: 'PUT' })
+      } else {
+        throw error
+      }
+    }
   }
 
   constructor ({
@@ -166,12 +180,19 @@ class CouchContinuum {
     if (this.q) { qs.q = this.q }
     if (this.n) { qs.n = this.n }
     if (this.placement) { qs.placement = this.placement }
-    return request({
-      url: dbUrl,
-      method: 'PUT',
-      qs,
-      json: true
-    })
+    try {
+      const result = await request({
+        url: dbUrl,
+        method: 'PUT',
+        qs,
+        json: true
+      })
+      return result
+    } catch (error) {
+      if (error.error !== 'file_exists') {
+        throw error
+      }
+    }
   }
 
   async _destroyDb (dbUrl) {

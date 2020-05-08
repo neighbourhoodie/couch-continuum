@@ -18,8 +18,14 @@ describe([name, version].join(' @ '), function () {
 
   beforeEach(async function () {
     // ensure db exists
-    const url = [couchUrl, dbName].join('/')
-    await request({ url, method: 'PUT' })
+    const url = `${couchUrl}/${dbName}`
+    try {
+      await request({ url, method: 'PUT' })
+    } catch (error) {
+      if (error.error !== 'file_exists') {
+        throw error
+      }
+    }
     await request({
       url: [url, '_bulk_docs'].join('/'),
       method: 'POST',
@@ -33,8 +39,18 @@ describe([name, version].join(' @ '), function () {
 
   afterEach(async function () {
     // destroy dbs
-    await request({ url: `${couchUrl}/${dbName}`, method: 'DELETE' })
-    await request({ url: `${couchUrl}/temp_copy_${dbName}`, method: 'DELETE' })
+    const urls = ['', 'temp_copy_'].map((s) => {
+      return `${couchUrl}/${s}${dbName}`
+    })
+    for (const url of urls) {
+      try {
+        await request({ url, method: 'DELETE' })
+      } catch (error) {
+        if (error.error !== 'not_found') {
+          throw error
+        }
+      }
+    }
   })
 
   it('should exist', function () {
@@ -65,8 +81,11 @@ describe([name, version].join(' @ '), function () {
     await continuum.createReplica()
     await continuum.replacePrimary()
     // verify cleanup
-    const { error } = await request({ url: `${couchUrl}/temp_copy_${dbName}`, json: true })
-    assert.strictEqual(error, 'not_found')
+    try {
+      await request({ url: `${couchUrl}/temp_copy_${dbName}`, json: true })
+    } catch (error) {
+      assert.strictEqual(error.error, 'not_found')
+    }
   })
 
   it('should check if a db is in use', async function () {
