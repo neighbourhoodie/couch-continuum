@@ -166,4 +166,4 @@ All contributions are welcome: bug reports, feature requests, "why doesn't this 
 
 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-(c) 2018 Neighbourhoodie Software & Open Source contributors
+(c) 2018–2020 Neighbourhoodie Software & Open Source contributors
