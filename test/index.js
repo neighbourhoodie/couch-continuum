@@ -201,4 +201,14 @@ describe([name, version].join(' @ '), function () {
     assert.strictEqual(security.members.roles[0], replicaSec.members.roles[0])
     assert.strictEqual(security.members.names[0], replicaSec.members.names[0])
   })
+
+  it('should run timer code', async function () {
+    const interval = 1
+    const continuum = new CouchContinuum({
+      couchUrl,
+      source: dbName,
+      interval
+    })
+    await continuum.createReplica()
+  })
 })
