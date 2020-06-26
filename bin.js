@@ -51,6 +51,67 @@ async function getConsent (question) {
   })
 }
 
+function generalOptions (yargs) {
+  return yargs
+    // backwards compat with old flag names
+    .alias('source', 'dbNames')
+    .alias('source', 'N')
+    .alias('target', 'copyName')
+    .alias('target', 'c')
+    // actual options
+    .options({
+      source: {
+        alias: 's',
+        description: 'The name or URL of a database to use as a primary.',
+        required: true,
+        type: 'string'
+      },
+      target: {
+        alias: 't',
+        description: 'The name or URL of a database to use as a replica. Defaults to {source}_temp_copy',
+        type: 'string'
+      },
+      couchUrl: {
+        alias: 'u',
+        description: 'The URL of the CouchDB cluster to act upon.',
+        default: process.env.COUCH_URL || 'http://localhost:5984'
+      },
+      interval: {
+        alias: 'i',
+        description: 'How often (in milliseconds) to check replication tasks for progress.',
+        default: 1000
+      },
+      q: {
+        description: 'The desired "q" value for the new database.',
+        type: 'number'
+      },
+      n: {
+        description: 'The desired "n" value for the new database.',
+        type: 'number'
+      },
+      verbose: {
+        alias: 'v',
+        description: 'Enable verbose logging.',
+        type: 'boolean'
+      },
+      placement: {
+        alias: 'p',
+        description: 'Placement rule for the affected database(s).',
+        type: 'string'
+      },
+      filterTombstones: {
+        alias: 'f',
+        description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
+        default: false
+      },
+      replicateSecurity: {
+        alias: 'r',
+        description: 'Replicate a database\'s /_security object in addition to its documents.',
+        default: true
+      }
+    })
+}
+
 /*
 MAIN
  */
@@ -60,6 +121,7 @@ require('yargs')
     command: 'start',
     aliases: ['$0'],
     description: 'Migrate a database to new settings.',
+    builder: generalOptions,
     handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
@@ -80,6 +142,7 @@ require('yargs')
     command: 'create-replica',
     aliases: ['create', 'replica'],
     description: 'Create a replica of the given primary.',
+    builder: generalOptions,
     handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
@@ -94,6 +157,7 @@ require('yargs')
     command: 'replace-primary',
     aliases: ['replace', 'primary'],
     description: 'Replace the given primary with the indicated replica.',
+    builder: generalOptions,
     handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Replacing primary ${continuum.source.host}${continuum.source.pathname} with ${continuum.target.host}${continuum.target.pathname}`)
@@ -107,12 +171,58 @@ require('yargs')
     command: 'migrate-all',
     aliases: ['all'],
     description: 'Migrate all non-special databases to new settings.',
+    builder: function (yargs) {
+      yargs.options({
+        couchUrl: {
+          alias: 'u',
+          description: 'The URL of the CouchDB cluster to act upon.',
+          default: process.env.COUCH_URL || 'http://localhost:5984'
+        },
+        interval: {
+          alias: 'i',
+          description: 'How often (in milliseconds) to check replication tasks for progress.',
+          default: 1000
+        },
+        q: {
+          description: 'The desired "q" value for the new database.',
+          type: 'number'
+        },
+        n: {
+          description: 'The desired "n" value for the new database.',
+          type: 'number'
+        },
+        verbose: {
+          alias: 'v',
+          description: 'Enable verbose logging.',
+          type: 'boolean'
+        },
+        placement: {
+          alias: 'p',
+          description: 'Placement rule for the affected database(s).',
+          type: 'string'
+        },
+        filterTombstones: {
+          alias: 'f',
+          description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
+          default: false
+        },
+        replicateSecurity: {
+          alias: 'r',
+          description: 'Replicate a database\'s /_security object in addition to its documents.',
+          default: true
+        }
+      })
+    },
     handler: async function (argv) {
       const { couchUrl, verbose } = argv
       if (verbose) { process.env.LOG = true }
       const dbNames = await CouchContinuum.getRemaining(couchUrl)
-      const continuums = dbNames.map((dbName) => {
-        return new CouchContinuum({ dbName, ...argv })
+      if (!dbNames.length) {
+        console.log('No eligible databases to migrate.')
+        return
+      }
+      const continuums = dbNames.map((source) => {
+        return new CouchContinuum({ source, ...argv })
       })
       log('Creating replicas...')
       await CouchContinuum.createReplicas(continuums)
@@ -122,63 +232,6 @@ require('yargs')
       await CouchContinuum.replacePrimaries(continuums)
       await CouchContinuum.removeCheckpoint()
       console.log(`Successfully migrated databases: ${dbNames.join(', ')}`)
-    }
-  })
-  // backwards compat with old flag names
-  .alias('source', 'dbNames')
-  .alias('source', 'N')
-  .alias('target', 'copyName')
-  .alias('target', 'c')
-  // actual options
-  .options({
-    source: {
-      alias: 's',
-      description: 'The name or URL of a database to use as a primary.',
-      required: true,
-      type: 'string'
-    },
-    target: {
-      alias: 't',
-      description: 'The name or URL of a database to use as a replica. Defaults to {source}_temp_copy',
-      type: 'string'
-    },
-    couchUrl: {
-      alias: 'u',
-      description: 'The URL of the CouchDB cluster to act upon.',
-      default: process.env.COUCH_URL || 'http://localhost:5984'
-    },
-    interval: {
-      alias: 'i',
-      description: 'How often (in milliseconds) to check replication tasks for progress.',
-      default: 1000
-    },
-    q: {
-      description: 'The desired "q" value for the new database.',
-      type: 'number'
-    },
-    n: {
-      description: 'The desired "n" value for the new database.',
-      type: 'number'
-    },
-    verbose: {
-      alias: 'v',
-      description: 'Enable verbose logging.',
-      type: 'boolean'
-    },
-    placement: {
-      alias: 'p',
-      description: 'Placement rule for the affected database(s).',
-      type: 'string'
-    },
-    filterTombstones: {
-      alias: 'f',
-      description: 'Filter tombstones during replica creation. Does not work with CouchDB 1.x',
-      default: false
-    },
-    replicateSecurity: {
-      alias: 'r',
-      description: 'Replicate a database\'s /_security object in addition to its documents.',
-      default: true
     }
   })
   .config()

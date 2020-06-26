@@ -56,7 +56,14 @@ class CouchContinuum {
   }
 
   static async removeCheckpoint () {
-    await unlink(checkpoint)
+    try {
+      await unlink(checkpoint)
+    } catch (error) {
+      // don't complain if checkpoint is already missing
+      if (error.code !== 'ENOENT') {
+        throw error
+      }
+    }
   }
 
   static async getRemaining (couchUrl) {
@@ -340,7 +347,7 @@ class CouchContinuum {
   }
 
   async replacePrimary () {
-    log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.path}...`)
+    log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.pathname}...`)
     log('[0/8] Checking if primary is in use...')
     await this._isInUse(this.source.pathname.slice(1))
     log('[1/8] Verifying primary and replica match...')
