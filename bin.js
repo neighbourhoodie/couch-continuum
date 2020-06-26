@@ -68,6 +68,14 @@ require('yargs')
       if (!consent) return log('Could not acquire consent. Exiting...')
       await continuum.replacePrimary()
       console.log(`Migrated database: ${continuum.source.host}${continuum.source.path}`)
+      log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
+      try {
+        await continuum.createReplica()
+        const consent = await getConsent()
+        if (!consent) return log('Could not acquire consent. Exiting...')
+        await continuum.replacePrimary()
+        console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
+      } catch (error) { catchError(error) }
     }
   })
   .command({
@@ -79,6 +87,11 @@ require('yargs')
       log(`Creating replica of ${continuum.source.host}${continuum.source.path} at ${continuum.target.host}${continuum.target.path}`)
       await continuum.createReplica()
       console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
+      log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
+      try {
+        await continuum.createReplica()
+        console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
+      } catch (error) { catchError(error) }
     }
   })
   .command({
