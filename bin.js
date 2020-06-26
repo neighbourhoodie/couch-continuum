@@ -62,20 +62,18 @@ require('yargs')
     description: 'Migrate a database to new settings.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Migrating database: ${continuum.source.host}${continuum.source.path}`)
-      await continuum.createReplica()
-      const consent = await getConsent()
-      if (!consent) return log('Could not acquire consent. Exiting...')
-      await continuum.replacePrimary()
-      console.log(`Migrated database: ${continuum.source.host}${continuum.source.path}`)
       log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
-      try {
-        await continuum.createReplica()
-        const consent = await getConsent()
-        if (!consent) return log('Could not acquire consent. Exiting...')
-        await continuum.replacePrimary()
-        console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
-      } catch (error) { catchError(error) }
+      await continuum.createReplica()
+      const consent1 = await getConsent()
+      if (!consent1) return log('Could not acquire consent. Exiting...')
+      await continuum.replacePrimary()
+      console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
+      log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
+      await continuum.createReplica()
+      const consent2 = await getConsent()
+      if (!consent2) return log('Could not acquire consent. Exiting...')
+      await continuum.replacePrimary()
+      console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -84,14 +82,12 @@ require('yargs')
     description: 'Create a replica of the given primary.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Creating replica of ${continuum.source.host}${continuum.source.path} at ${continuum.target.host}${continuum.target.path}`)
-      await continuum.createReplica()
-      console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
       log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
-      try {
-        await continuum.createReplica()
-        console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
-      } catch (error) { catchError(error) }
+      await continuum.createReplica()
+      console.log(`Created replica of ${continuum.source.host}${continuum.source.pathname}`)
+      log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
+      await continuum.createReplica()
+      console.log(`Created replica of ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -100,11 +96,11 @@ require('yargs')
     description: 'Replace the given primary with the indicated replica.',
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Replacing primary ${continuum.source.host}${continuum.source.path} with ${continuum.target.host}${continuum.target.path}`)
+      log(`Replacing primary ${continuum.source.host}${continuum.source.pathname} with ${continuum.target.host}${continuum.target.pathname}`)
       const consent = await getConsent()
       if (!consent) return log('Could not acquire consent. Exiting...')
       await continuum.replacePrimary()
-      console.log(`Successfully replaced ${continuum.source.host}${continuum.source.path}`)
+      console.log(`Successfully replaced ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -188,7 +184,9 @@ require('yargs')
   .config()
   .alias('h', 'help')
   .fail((msg, error, yargs) => {
-    if (error.error === 'not_found') {
+    if (!error) {
+      console.log(msg)
+    } else if (error.error === 'not_found') {
       console.log('Primary database does not exist. There is nothing to migrate.')
     } else if (error.error === 'unauthorized') {
       console.log('Could not authenticate with CouchDB. Are the credentials correct?')
