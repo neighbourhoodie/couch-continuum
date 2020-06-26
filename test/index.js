@@ -211,4 +211,11 @@ describe([name, version].join(' @ '), function () {
     })
     await continuum.createReplica()
   })
+
+  it('should handle removing a checkpoint more than once', async function () {
+    const checkpoint = '.testcheckpoint'
+    await CouchContinuum.makeCheckpoint(checkpoint)
+    await CouchContinuum.removeCheckpoint(checkpoint)
+    await CouchContinuum.removeCheckpoint(checkpoint)
+  })
 })
