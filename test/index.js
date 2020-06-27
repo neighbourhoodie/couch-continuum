@@ -1,4 +1,4 @@
-/* globals describe, it, beforeEach, before, afterEach */
+/* globals describe, it, beforeEach, before, afterEach, after */
 
 const assert = require('assert').strict
 const CouchContinuum = require('..')
@@ -217,5 +217,30 @@ describe([name, version].join(' @ '), function () {
     await CouchContinuum.makeCheckpoint(checkpoint)
     await CouchContinuum.removeCheckpoint(checkpoint)
     await CouchContinuum.removeCheckpoint(checkpoint)
+  })
+
+  describe('_isInUse', function () {
+    before(async function () {
+      this.continuum = new CouchContinuum({ couchUrl, source: dbName })
+      await this.continuum._createDb(this.continuum.source.href)
+      await this.continuum._createDb(this.continuum.target.href)
+      await request({
+        method: 'POST',
+        url: `${this.continuum.url.href}_replicate`,
+        json: {
+          continuous: true,
+          source: this.continuum.source.href,
+          target: this.continuum.target.href
+        }
+      })
+    })
+
+    it('should check for databases in use', function () {
+      assert.rejects(this.continuum._isInUse(dbName))
+    })
+
+    after(async function () {
+      await this.promise
+    })
   })
 })
