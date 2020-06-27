@@ -6,8 +6,6 @@ services:
 - couchdb
 node_js:
 - stable
-- 10
-- 8
 before_script:
 - "curl -X DELETE http://localhost:5984/bicycle"
 - npm i -g npm
