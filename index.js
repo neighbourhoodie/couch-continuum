@@ -1,4 +1,4 @@
-const assert = require('assert')
+const assert = require('assert').strict
 const path = require('path')
 const ProgressBar = require('progress')
 const { URL, format: urlFormat } = require('url')
@@ -56,7 +56,14 @@ class CouchContinuum {
   }
 
   static async removeCheckpoint () {
-    await unlink(checkpoint)
+    try {
+      await unlink(checkpoint)
+    } catch (error) {
+      // don't complain if checkpoint is already missing
+      if (error.code !== 'ENOENT') {
+        throw error
+      }
+    }
   }
 
   static async getRemaining (couchUrl) {
@@ -82,25 +89,51 @@ class CouchContinuum {
   }
 
   static async _isAvailable (dbUrl) {
-    const { down } = await request({
-      url: `${dbUrl}/_local/in-maintenance`,
-      json: true
-    })
-    return !down
+    try {
+      const { down } = await request({
+        url: `${dbUrl}/_local/in-maintenance`,
+        json: true
+      })
+      return !down
+    } catch (error) {
+      if (error.error !== 'not_found') {
+        throw error
+      } else {
+        // document doesn't exist, so, db must be available
+        return true
+      }
+    }
   }
 
   static async _setUnavailable (dbUrl) {
-    await request({
-      url: `${dbUrl}/_local/in-maintenance`,
-      method: 'PUT',
-      json: { down: true }
-    })
+    const url = `${dbUrl}/_local/in-maintenance`
+    try {
+      // update
+      const { _rev: rev } = await request({ url, json: true })
+      return request({ url, json: { _rev: rev, down: true }, method: 'PUT' })
+    } catch (error) {
+      if (error.error === 'not_found') {
+        // create
+        await request({ url, method: 'PUT', json: { down: true } })
+      } else {
+        throw error
+      }
+    }
   }
 
   static async _setAvailable (dbUrl) {
     const url = `${dbUrl}/_local/in-maintenance`
-    const { _rev: rev } = await request({ url, json: true })
-    return request({ url, qs: { rev }, method: 'DELETE' })
+    try {
+      const { _rev: rev } = await request({ url, json: true })
+      return request({ url, qs: { rev }, method: 'DELETE' })
+    } catch (error) {
+      if (error.error === 'not_found') {
+        // already available, nothing to do
+        return null
+      } else {
+        throw error
+      }
+    }
   }
 
   constructor ({
@@ -166,12 +199,19 @@ class CouchContinuum {
     if (this.q) { qs.q = this.q }
     if (this.n) { qs.n = this.n }
     if (this.placement) { qs.placement = this.placement }
-    return request({
-      url: dbUrl,
-      method: 'PUT',
-      qs,
-      json: true
-    })
+    try {
+      const result = await request({
+        url: dbUrl,
+        method: 'PUT',
+        qs,
+        json: true
+      })
+      return result
+    } catch (error) {
+      if (error.error !== 'file_exists') {
+        throw error
+      }
+    }
   }
 
   async _destroyDb (dbUrl) {
@@ -257,18 +297,32 @@ class CouchContinuum {
    */
   async _isInUse (dbName) {
     // TODO check all known hosts
-    const activeTasks = await request({
-      url: `${this.url.href}_active_tasks`,
-      json: true
-    })
-    const { jobs } = await request({
-      url: `${this.url.href}_scheduler/jobs`,
-      json: true
-    }).then(({ jobs }) => {
-      return { jobs: jobs || [] }
-    })
-    for (const { database } of [...jobs, ...activeTasks]) {
-      assert.notStrictEqual(database, dbName, `${dbName} is still in use.`)
+    try {
+      const activeTasks = await request({
+        url: `${this.url.href}_active_tasks`,
+        json: true
+      })
+      const { jobs } = await request({
+        url: `${this.url.href}_scheduler/jobs`,
+        json: true
+      }).then(({ jobs }) => {
+        return { jobs: jobs || [] }
+      })
+      for (const { database, source, target } of [...jobs, ...activeTasks]) {
+        const re = new RegExp(`/${dbName}/`)
+        if (database) {
+          assert.strictEqual(re.test(database), true)
+        }
+        assert.strictEqual(re.test(source), true)
+        assert.strictEqual(re.test(target), true)
+      }
+    } catch (error) {
+      if (error.error === 'illegal_database_name') {
+        // 1.x -- this block is just for travis' test conditions
+        return null
+      } else {
+        throw error
+      }
     }
   }
 
@@ -298,7 +352,7 @@ class CouchContinuum {
   }
 
   async replacePrimary () {
-    log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.path}...`)
+    log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.pathname}...`)
     log('[0/8] Checking if primary is in use...')
     await this._isInUse(this.source.pathname.slice(1))
     log('[1/8] Verifying primary and replica match...')

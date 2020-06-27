@@ -1,6 +1,6 @@
-/* globals describe, it, beforeEach, before, afterEach */
+/* globals describe, it, beforeEach, before, afterEach, after */
 
-const assert = require('assert')
+const assert = require('assert').strict
 const CouchContinuum = require('..')
 const request = require('../lib/request')
 const { name, version } = require('../package.json')
@@ -18,8 +18,14 @@ describe([name, version].join(' @ '), function () {
 
   beforeEach(async function () {
     // ensure db exists
-    const url = [couchUrl, dbName].join('/')
-    await request({ url, method: 'PUT' })
+    const url = `${couchUrl}/${dbName}`
+    try {
+      await request({ url, method: 'PUT' })
+    } catch (error) {
+      if (error.error !== 'file_exists') {
+        throw error
+      }
+    }
     await request({
       url: [url, '_bulk_docs'].join('/'),
       method: 'POST',
@@ -33,8 +39,18 @@ describe([name, version].join(' @ '), function () {
 
   afterEach(async function () {
     // destroy dbs
-    await request({ url: `${couchUrl}/${dbName}`, method: 'DELETE' })
-    await request({ url: `${couchUrl}/temp_copy_${dbName}`, method: 'DELETE' })
+    const urls = ['', 'temp_copy_'].map((s) => {
+      return `${couchUrl}/${s}${dbName}`
+    })
+    for (const url of urls) {
+      try {
+        await request({ url, method: 'DELETE' })
+      } catch (error) {
+        if (error.error !== 'not_found') {
+          throw error
+        }
+      }
+    }
   })
 
   it('should exist', function () {
@@ -65,8 +81,11 @@ describe([name, version].join(' @ '), function () {
     await continuum.createReplica()
     await continuum.replacePrimary()
     // verify cleanup
-    const { error } = await request({ url: `${couchUrl}/temp_copy_${dbName}`, json: true })
-    assert.strictEqual(error, 'not_found')
+    try {
+      await request({ url: `${couchUrl}/temp_copy_${dbName}`, json: true })
+    } catch (error) {
+      assert.strictEqual(error.error, 'not_found')
+    }
   })
 
   it('should check if a db is in use', async function () {
@@ -181,5 +200,47 @@ describe([name, version].join(' @ '), function () {
     })
     assert.strictEqual(security.members.roles[0], replicaSec.members.roles[0])
     assert.strictEqual(security.members.names[0], replicaSec.members.names[0])
+  })
+
+  it('should run timer code', async function () {
+    const interval = 1
+    const continuum = new CouchContinuum({
+      couchUrl,
+      source: dbName,
+      interval
+    })
+    await continuum.createReplica()
+  })
+
+  it('should handle removing a checkpoint more than once', async function () {
+    const checkpoint = '.testcheckpoint'
+    await CouchContinuum.makeCheckpoint(checkpoint)
+    await CouchContinuum.removeCheckpoint(checkpoint)
+    await CouchContinuum.removeCheckpoint(checkpoint)
+  })
+
+  describe('_isInUse', function () {
+    before(async function () {
+      this.continuum = new CouchContinuum({ couchUrl, source: dbName })
+      await this.continuum._createDb(this.continuum.source.href)
+      await this.continuum._createDb(this.continuum.target.href)
+      await request({
+        method: 'POST',
+        url: `${this.continuum.url.href}_replicate`,
+        json: {
+          continuous: true,
+          source: this.continuum.source.href,
+          target: this.continuum.target.href
+        }
+      })
+    })
+
+    it('should check for databases in use', function () {
+      assert.rejects(this.continuum._isInUse(dbName))
+    })
+
+    after(async function () {
+      await this.promise
+    })
   })
 })

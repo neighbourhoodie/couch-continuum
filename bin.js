@@ -51,20 +51,6 @@ async function getConsent (question) {
   })
 }
 
-function catchError (error) {
-  console.log('ERROR')
-  if (error.error === 'not_found') {
-    console.log('Primary database does not exist. There is nothing to migrate.')
-  } else if (error.error === 'unauthorized') {
-    console.log('Could not authenticate with CouchDB. Are the credentials correct?')
-  } else if (error.code === 'EACCES') {
-    console.log('Could not access the checkpoint document. Are you running as a different user?')
-  } else {
-    console.log('Unexpected error: %j', error)
-  }
-  process.exit(1)
-}
-
 function generalOptions (yargs) {
   return yargs
     // backwards compat with old flag names
@@ -139,13 +125,17 @@ require('yargs')
     handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
-      try {
-        await continuum.createReplica()
-        const consent = await getConsent()
-        if (!consent) return log('Could not acquire consent. Exiting...')
-        await continuum.replacePrimary()
-        console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
-      } catch (error) { catchError(error) }
+      await continuum.createReplica()
+      const consent1 = await getConsent()
+      if (!consent1) return log('Could not acquire consent. Exiting...')
+      await continuum.replacePrimary()
+      console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
+      log(`Migrating database: ${continuum.source.host}${continuum.source.pathname}`)
+      await continuum.createReplica()
+      const consent2 = await getConsent()
+      if (!consent2) return log('Could not acquire consent. Exiting...')
+      await continuum.replacePrimary()
+      console.log(`Migrated database: ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -156,10 +146,11 @@ require('yargs')
     handler: async function (argv) {
       const continuum = getContinuum(argv)
       log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
-      try {
-        await continuum.createReplica()
-        console.log(`Created replica of ${continuum.source.host}${continuum.source.path}`)
-      } catch (error) { catchError(error) }
+      await continuum.createReplica()
+      console.log(`Created replica of ${continuum.source.host}${continuum.source.pathname}`)
+      log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
+      await continuum.createReplica()
+      console.log(`Created replica of ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -169,13 +160,11 @@ require('yargs')
     builder: generalOptions,
     handler: async function (argv) {
       const continuum = getContinuum(argv)
-      log(`Replacing primary ${continuum.source.host}${continuum.source.path} with ${continuum.target.host}${continuum.target.path}`)
-      try {
-        const consent = await getConsent()
-        if (!consent) return log('Could not acquire consent. Exiting...')
-        await continuum.replacePrimary()
-        console.log(`Successfully replaced ${continuum.source.host}${continuum.source.path}`)
-      } catch (error) { catchError(error) }
+      log(`Replacing primary ${continuum.source.host}${continuum.source.pathname} with ${continuum.target.host}${continuum.target.pathname}`)
+      const consent = await getConsent()
+      if (!consent) return log('Could not acquire consent. Exiting...')
+      await continuum.replacePrimary()
+      console.log(`Successfully replaced ${continuum.source.host}${continuum.source.pathname}`)
     }
   })
   .command({
@@ -227,26 +216,39 @@ require('yargs')
     handler: async function (argv) {
       const { couchUrl, verbose } = argv
       if (verbose) { process.env.LOG = true }
-      try {
-        const dbNames = await CouchContinuum.getRemaining(couchUrl)
-        if (!dbNames.length) {
-          console.log('No eligible databases to migrate.')
-          return
-        }
-        const continuums = dbNames.map((dbName) => {
-          return new CouchContinuum({ dbName, ...argv })
-        })
-        log('Creating replicas...')
-        await CouchContinuum.createReplicas(continuums)
-        const consent = await getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
-        if (!consent) return console.log('Could not acquire consent. Exiting...')
-        log('Replacing primaries...')
-        await CouchContinuum.replacePrimaries(continuums)
-        await CouchContinuum.removeCheckpoint()
-        console.log(`Successfully migrated databases: ${dbNames.join(', ')}`)
-      } catch (error) { catchError(error) }
+      const dbNames = await CouchContinuum.getRemaining(couchUrl)
+      if (!dbNames.length) {
+        console.log('No eligible databases to migrate.')
+        return
+      }
+      const continuums = dbNames.map((source) => {
+        return new CouchContinuum({ source, ...argv })
+      })
+      log('Creating replicas...')
+      await CouchContinuum.createReplicas(continuums)
+      const consent = await getConsent('Ready to replace primaries with replicas. Continue? [y/N] ')
+      if (!consent) return console.log('Could not acquire consent. Exiting...')
+      log('Replacing primaries...')
+      await CouchContinuum.replacePrimaries(continuums)
+      await CouchContinuum.removeCheckpoint()
+      console.log(`Successfully migrated databases: ${dbNames.join(', ')}`)
     }
   })
   .config()
   .alias('h', 'help')
+  .fail((msg, error, yargs) => {
+    if (!error) {
+      console.log(msg)
+    } else if (error.error === 'not_found') {
+      console.log('Primary database does not exist. There is nothing to migrate.')
+    } else if (error.error === 'unauthorized') {
+      console.log('Could not authenticate with CouchDB. Are the credentials correct?')
+    } else if (error.code === 'EACCES') {
+      console.log('Could not access the checkpoint document. Are you running as a different user?')
+    } else {
+      console.log('Unexpected error. Please report this so we can fix it!')
+      console.log(error)
+    }
+    process.exit(1)
+  })
   .parse()

@@ -7,7 +7,7 @@
     "couch-continuum": "bin.js"
   },
   "scripts": {
-    "test": "standard && dependency-check . --unused --no-dev && mocha && npm audit"
+    "test": "standard && dependency-check . --unused --no-dev && LOG=true mocha && npm audit"
   },
   "author": "Diana Thayer <garbados@gmail.com>",
   "license": "Apache-2.0",
