@@ -235,12 +235,34 @@ describe([name, version].join(' @ '), function () {
       })
     })
 
-    it('should check for databases in use', function () {
+    it('should check for databases in use', async function () {
       assert.rejects(this.continuum._isInUse(dbName))
+      await request({
+        method: 'POST',
+        url: `${this.continuum.url.href}_replicate`,
+        json: {
+          cancel: true,
+          continuous: true,
+          source: this.continuum.source.href,
+          target: this.continuum.target.href
+        }
+      })
+      assert.doesNotReject(this.continuum._isInUse(dbName))
     })
 
     after(async function () {
-      await this.promise
+      try {
+        await request({
+          method: 'POST',
+          url: `${this.continuum.url.href}_replicate`,
+          json: {
+            cancel: true,
+            continuous: true,
+            source: this.continuum.source.href,
+            target: this.continuum.target.href
+          }
+        })
+      } catch {}
     })
   })
 })

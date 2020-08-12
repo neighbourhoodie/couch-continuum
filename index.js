@@ -308,13 +308,15 @@ class CouchContinuum {
       }).then(({ jobs }) => {
         return { jobs: jobs || [] }
       })
+      let isInUse = false
+      const re = new RegExp(`/${dbName}/`)
       for (const { database, source, target } of [...jobs, ...activeTasks]) {
-        const re = new RegExp(`/${dbName}/`)
-        if (database) {
-          assert.strictEqual(re.test(database), true)
+        if (re.test(database) || re.test(source) || re.test(target)) {
+          isInUse = true
         }
-        assert.strictEqual(re.test(source), true)
-        assert.strictEqual(re.test(target), true)
+      }
+      if (isInUse) {
+        throw new Error(`Database ${dbName} is still in use.`)
       }
     } catch (error) {
       if (error.error === 'illegal_database_name') {

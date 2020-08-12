@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "dependency-check": "^4.1.0",
-    "mocha": "^8.0.1",
+    "mocha": "^8.1.1",
     "standard": "^14.3.4"
   },
   "repository": {
