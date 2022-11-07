@@ -3,9 +3,6 @@
 [![Stability](https://img.shields.io/badge/stability-stable-green.svg?style=flat-square)](https://nodejs.org/api/documentation.html#documentation_stability_index)
 [![npm version](https://img.shields.io/npm/v/couch-continuum.svg?style=flat-square)](https://www.npmjs.com/package/couch-continuum)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg?style=flat-square)](https://standardjs.com)
-[![Build Status](https://img.shields.io/travis/neighbourhoodie/couch-continuum/master.svg?style=flat-square)](https://travis-ci.org/neighbourhoodie/couch-continuum)
-[![Coverage Status](https://img.shields.io/coveralls/github/neighbourhoodie/couch-continuum.svg?style=flat-square)](https://coveralls.io/github/neighbourhoodie/couch-continuum?branch=master)
-[![Greenkeeper badge](https://badges.greenkeeper.io/neighbourhoodie/couch-continuum.svg)](https://greenkeeper.io/)
 
 A tool for migrating CouchDB databases. It is useful for modifying database configuration values that can only be set during database creation, like `q` and `placement`. For example:
 
@@ -104,6 +101,8 @@ Options:
                                 not work with CouchDB 1.x       [default: false]
   --replicateSecurity, -r       Replicate a database's /_security object in
                                 addition to its documents.      [default: false]
+  --allowReplications           Allow ongoing replications to the source
+                                database                        [default: false]
   --config                      Path to JSON config file
   -h, --help                    Show help                              [boolean]
 ```
@@ -166,4 +165,4 @@ All contributions are welcome: bug reports, feature requests, "why doesn't this 
 
 [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-(c) 2018–2020 Neighbourhoodie Software & Open Source contributors
+(c) 2018–2022 Neighbourhoodie Software & Open Source contributors
