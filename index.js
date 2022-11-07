@@ -146,7 +146,8 @@ class CouchContinuum {
     replicateSecurity,
     source,
     target,
-    allowReplications
+    allowReplications,
+    continuous
   }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(source, 'The Continuum requires a source database.')
@@ -180,6 +181,7 @@ class CouchContinuum {
     this.filterTombstones = filterTombstones
     this.replicateSecurity = replicateSecurity
     this.allowReplications = allowReplications
+    this.continuous = continuous
     // what's great for a snack and fits on your back
     // it's log it's log it's log
     // everyone wants a log
@@ -349,6 +351,14 @@ class CouchContinuum {
       _deleted: { $exists: false }
     } : undefined
     await this._replicate(this.source, this.target, selector)
+    if (this.continuous) {
+      log(`Setting up continuous replication from ${this.source} to ${this.target}...`)
+      await request({
+        url: `${this.url.href}_replicate`,
+        method: 'POST',
+        json: { source: this.source.href, target: this.target.href, continuous: true }
+      })
+    }
     log('[3/5] Verifying primary did not change during replication...')
     const lastSeq2 = await this._getUpdateSeq(this.source.href)
     assert(lastSeq1 <= lastSeq2, `${this.source.host}${this.source.pathname} is still receiving updates. Exiting...`)

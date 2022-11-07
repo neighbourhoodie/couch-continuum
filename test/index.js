@@ -51,6 +51,24 @@ describe([name, version].join(' @ '), function () {
         }
       }
     }
+
+    try {
+      await request({
+        url: `${couchUrl}/_replicate`,
+        method: 'POST',
+        json: {
+          source: dbName,
+          target: `temp_copy_${dbName}`,
+          create_target: true,
+          continuous: true,
+          cancel: true
+        }
+      })
+    } catch (error) {
+      if (error.error !== 'not_found') {
+        throw error
+      }
+    }
   })
 
   it('should exist', function () {
@@ -221,17 +239,33 @@ describe([name, version].join(' @ '), function () {
 
   it('should bypass isInUse when needed', async function () {
     const continuum = new CouchContinuum({ couchUrl, source: dbName, allowReplications: true })
-    await request({
-      url: `${couchUrl}/_replicate`,
-      method: 'POST',
-      json: {
-        source: 'testdb',
-        target: 'temp_copy_testdb',
-        create_target: true,
-        continuous: true
-      }
-    })
+    const opts =
+     {
+       url: `${couchUrl}/_replicate`,
+       method: 'POST',
+       json: {
+         source: dbName,
+         target: `temp_copy_${dbName}`,
+         create_target: true,
+         continuous: true
+       }
+     }
+    await request(opts)
     await continuum.createReplica()
+    await request({ cancel: true, ...opts })
+  })
+
+  it('should create a new continuous replication if flag is given', async function () {
+    const continuum = new CouchContinuum({ couchUrl, source: dbName, continuous: true })
+    await continuum.createReplica()
+    const { jobs } = await request({
+      url: `${couchUrl}/_scheduler/jobs`,
+      json: true
+    })
+    const job = jobs.find(job => {
+      return job.source.includes(dbName) && job.target.includes(`temp_copy_${dbName}`)
+    })
+    assert(job)
   })
 
   describe('_isInUse', function () {

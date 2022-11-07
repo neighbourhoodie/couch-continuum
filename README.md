@@ -103,6 +103,8 @@ Options:
                                 addition to its documents.      [default: false]
   --allowReplications           Allow ongoing replications to the source
                                 database                        [default: false]
+  --continuous                  Create a continuous replication from source to
+                                replica                         [default: false]
   --config                      Path to JSON config file
   -h, --help                    Show help                              [boolean]
 ```

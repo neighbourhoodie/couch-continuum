@@ -21,7 +21,8 @@ function getContinuum ({
   source,
   target,
   verbose,
-  allowReplications
+  allowReplications,
+  continuous
 }) {
   if (verbose) process.env.LOG = true
   return new CouchContinuum({
@@ -34,7 +35,8 @@ function getContinuum ({
     replicateSecurity,
     source,
     target,
-    allowReplications
+    allowReplications,
+    continuous
   })
 }
 
@@ -113,6 +115,11 @@ function generalOptions (yargs) {
       },
       allowReplications: {
         description: 'Allow ongoing replications to the source database.',
+        default: false,
+        type: 'boolean'
+      },
+      continuous: {
+        description: 'Create a continuous replication from source to replica',
         default: false,
         type: 'boolean'
       }
@@ -220,6 +227,11 @@ require('yargs')
         },
         allowReplications: {
           description: 'Allow ongoing replications to the source database.',
+          default: false,
+          type: 'boolean'
+        },
+        continuous: {
+          description: 'Create a continuous replication from source to replica',
           default: false,
           type: 'boolean'
         }
