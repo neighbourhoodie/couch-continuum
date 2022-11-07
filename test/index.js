@@ -219,6 +219,21 @@ describe([name, version].join(' @ '), function () {
     await CouchContinuum.removeCheckpoint(checkpoint)
   })
 
+  it('should bypass isInUse when needed', async function () {
+    const continuum = new CouchContinuum({ couchUrl, source: dbName, allowReplications: true })
+    await request({
+      url: `${couchUrl}/_replicate`,
+      method: 'POST',
+      json: {
+        source: 'testdb',
+        target: 'temp_copy_testdb',
+        create_target: true,
+        continuous: true
+      }
+    })
+    await continuum.createReplica()
+  })
+
   describe('_isInUse', function () {
     before(async function () {
       this.continuum = new CouchContinuum({ couchUrl, source: dbName })

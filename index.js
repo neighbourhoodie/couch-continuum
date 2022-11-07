@@ -145,7 +145,8 @@ class CouchContinuum {
     q,
     replicateSecurity,
     source,
-    target
+    target,
+    allowReplications
   }) {
     assert(couchUrl, 'The Continuum requires a URL for accessing CouchDB.')
     assert(source, 'The Continuum requires a source database.')
@@ -178,6 +179,7 @@ class CouchContinuum {
     this.placement = placement
     this.filterTombstones = filterTombstones
     this.replicateSecurity = replicateSecurity
+    this.allowReplications = allowReplications
     // what's great for a snack and fits on your back
     // it's log it's log it's log
     // everyone wants a log
@@ -334,7 +336,11 @@ class CouchContinuum {
   async createReplica () {
     log(`Creating replica ${this.target.host}${this.target.pathname}...`)
     log('[0/5] Checking if primary is in use...')
-    await this._isInUse(this.source.pathname.slice(1))
+    if (this.allowReplications) {
+      log('Skipping check because replications are allowed')
+    } else {
+      await this._isInUse(this.source.pathname.slice(1))
+    }
     const lastSeq1 = await this._getUpdateSeq(this.source.href)
     log(`[1/5] Creating replica db: ${this.target.host}${this.target.pathname}`)
     await this._createDb(this.target.href)
@@ -354,7 +360,11 @@ class CouchContinuum {
   async replacePrimary () {
     log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.pathname}...`)
     log('[0/8] Checking if primary is in use...')
-    await this._isInUse(this.source.pathname.slice(1))
+    if (this.allowReplications) {
+      log('Skipping check because replications are allowed')
+    } else {
+      await this._isInUse(this.source.pathname.slice(1))
+    }
     log('[1/8] Verifying primary and replica match...')
     await this._verifyReplica()
     log('[2/8] Destroying primary...')

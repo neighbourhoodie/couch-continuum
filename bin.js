@@ -20,7 +20,8 @@ function getContinuum ({
   replicateSecurity,
   source,
   target,
-  verbose
+  verbose,
+  allowReplications
 }) {
   if (verbose) process.env.LOG = true
   return new CouchContinuum({
@@ -32,7 +33,8 @@ function getContinuum ({
     q,
     replicateSecurity,
     source,
-    target
+    target,
+    allowReplications
   })
 }
 
@@ -108,6 +110,11 @@ function generalOptions (yargs) {
         alias: 'r',
         description: 'Replicate a database\'s /_security object in addition to its documents.',
         default: true
+      },
+      allowReplications: {
+        description: 'Allow ongoing replications to the source database.',
+        default: false,
+        type: 'boolean'
       }
     })
 }
@@ -144,7 +151,7 @@ require('yargs')
     description: 'Create a replica of the given primary.',
     builder: generalOptions,
     handler: async function (argv) {
-      const continuum = getContinuum(argv)
+      const continuum = getContinuum({ ...argv, allowReplications: true })
       log(`Creating replica of ${continuum.source.host}${continuum.source.pathname} at ${continuum.target.host}${continuum.target.pathname}`)
       await continuum.createReplica()
       console.log(`Created replica of ${continuum.source.host}${continuum.source.pathname}`)
@@ -210,6 +217,11 @@ require('yargs')
           alias: 'r',
           description: 'Replicate a database\'s /_security object in addition to its documents.',
           default: true
+        },
+        allowReplications: {
+          description: 'Allow ongoing replications to the source database.',
+          default: false,
+          type: 'boolean'
         }
       })
     },
