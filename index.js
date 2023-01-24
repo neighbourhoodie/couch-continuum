@@ -249,11 +249,12 @@ class CouchContinuum {
       if (bar.complete) clearInterval(timer)
       // TODO catch errors produced by this loop
     }, this.interval)
-    await request({
+    const replicateResult = await request({
       url: `${this.url.href}_replicate`,
       method: 'POST',
       json: { source: source.href, target: target.href, selector }
     })
+    this._verifyReplicateSuccessful(replicateResult)
     // copy security object over
     if (this.replicateSecurity) {
       log(`Replicating ${source}/_security to ${target}...`)
@@ -269,6 +270,21 @@ class CouchContinuum {
     }
     bar.tick(total)
     clearInterval(timer)
+  }
+
+  _verifyReplicateSuccessful (result) {
+    assert(result && result.ok,
+      '_replicate response was not ok')
+
+    const latest = result.history ? result.history[0] : null
+    assert(latest !== null,
+      '_replicate response does not have history entries')
+
+    assert(latest.docs_written === latest.docs_read,
+      '_replicate did not write as many docs as it read')
+
+    assert(latest.doc_write_failures === 0,
+      '_replicate encountered document write failures')
   }
 
   async _verifyReplica () {
