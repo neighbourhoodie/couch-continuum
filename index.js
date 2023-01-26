@@ -253,12 +253,12 @@ class CouchContinuum {
       if (bar.complete) clearInterval(timer)
       // TODO catch errors produced by this loop
     }, this.interval)
-    const replicateResult = await request({
+    await request({
       url: `${this.url.href}_replicate`,
       method: 'POST',
       json: { source: source.href, target: target.href, selector }
     })
-    this._verifyReplicateSuccessful(replicateResult)
+    await this._waitForCompletion({ source, target })
     // copy security object over
     if (this.replicateSecurity) {
       log(`Replicating ${source}/_security to ${target}...`)
@@ -276,19 +276,25 @@ class CouchContinuum {
     clearInterval(timer)
   }
 
-  _verifyReplicateSuccessful (result) {
-    assert(result && result.ok,
-      '_replicate response was not ok')
+  async _waitForCompletion ({ source, target }) {
+    const srcName = `/${source.pathname.slice(1)}/`
+    const tgtName = `/${target.pathname.slice(1)}/`
 
-    const latest = result.history ? result.history[0] : null
-    assert(latest !== null,
-      '_replicate response does not have history entries')
+    while (true) {
+      const tasks = await request({
+        url: `${this.url.href}_active_tasks`,
+        json: true
+      })
+      if (tasks.some((task) => task.source?.includes(srcName) && task.target?.includes(tgtName))) {
+        await this._sleep(1000)
+      } else {
+        return
+      }
+    }
+  }
 
-    assert(latest.docs_written === latest.docs_read,
-      '_replicate did not write as many docs as it read')
-
-    assert(latest.doc_write_failures === 0,
-      '_replicate encountered document write failures')
+  _sleep (msecs) {
+    return new Promise((resolve) => setTimeout(resolve, msecs))
   }
 
   async _verifyReplica () {
