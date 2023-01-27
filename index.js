@@ -25,6 +25,10 @@ const urlParse = (url) => {
   }
 }
 
+const displayUrl = (url) => {
+  return url.host + url.pathname
+}
+
 module.exports =
 class CouchContinuum {
   static async allDbs (url) {
@@ -192,8 +196,8 @@ class CouchContinuum {
       placement: this.placement,
       q: this.q,
       replicateSecurity: this.replicateSecurity,
-      source: `${this.source.host}${this.source.pathname}`,
-      target: `${this.target.host}${this.target.pathname}`,
+      source: `${displayUrl(this.source)}`,
+      target: `${displayUrl(this.target)}`,
       url: this.url.host
     }, undefined, 2)}`)
   }
@@ -239,21 +243,26 @@ class CouchContinuum {
     })
     var current = 0
     const timer = setInterval(async () => {
-      const { doc_count: latest } = await request({
-        url: target.href,
-        json: true
-      })
-      const delta = latest - current
-      bar.tick(delta)
-      current = latest
-      if (bar.complete) clearInterval(timer)
-      // TODO catch errors produced by this loop
+      try {
+        const { doc_count: latest } = await request({
+          url: target.href,
+          json: true
+        })
+        const delta = latest - current
+        bar.tick(delta)
+        current = latest
+        if (bar.complete) clearInterval(timer)
+      } catch (e) {
+        clearTimeout(timer)
+        throw e
+      }
     }, this.interval)
     await request({
       url: `${this.url.href}_replicate`,
       method: 'POST',
       json: { source: source.href, target: target.href, selector }
     })
+    await this._waitForCompletion({ source, target })
     // copy security object over
     if (this.replicateSecurity) {
       log(`Replicating ${source}/_security to ${target}...`)
@@ -269,6 +278,33 @@ class CouchContinuum {
     }
     bar.tick(total)
     clearInterval(timer)
+  }
+
+  async _waitForCompletion ({ source, target }) {
+    const srcName = `/${source.pathname.slice(1)}/`
+    const tgtName = `/${target.pathname.slice(1)}/`
+
+    const isUs = (task) => {
+      return task.source?.includes(srcName) &&
+             task.target?.includes(tgtName) &&
+             task.missing_revisions_found > task.docs_written
+    }
+
+    while (true) {
+      const tasks = await request({
+        url: `${this.url.href}_active_tasks`,
+        json: true
+      })
+      if (tasks.some(isUs)) {
+        await this._sleep(1000)
+      } else {
+        return
+      }
+    }
+  }
+
+  _sleep (msecs) {
+    return new Promise((resolve) => setTimeout(resolve, msecs))
   }
 
   async _verifyReplica () {
@@ -336,7 +372,7 @@ class CouchContinuum {
    *                   the replica has been created
    */
   async createReplica () {
-    log(`Creating replica ${this.target.host}${this.target.pathname}...`)
+    log(`Creating replica ${displayUrl(this.target)}...`)
     log('[0/5] Checking if primary is in use...')
     if (this.allowReplications) {
       log('Skipping check because replications are allowed')
@@ -344,7 +380,7 @@ class CouchContinuum {
       await this._isInUse(this.source.pathname.slice(1))
     }
     const lastSeq1 = await this._getUpdateSeq(this.source.href)
-    log(`[1/5] Creating replica db: ${this.target.host}${this.target.pathname}`)
+    log(`[1/5] Creating replica db: ${displayUrl(this.target)}`)
     await this._createDb(this.target.href)
     log('[2/5] Beginning replication of primary to replica...')
     const selector = this.filterTombstones ? {
@@ -361,14 +397,14 @@ class CouchContinuum {
     }
     log('[3/5] Verifying primary did not change during replication...')
     const lastSeq2 = await this._getUpdateSeq(this.source.href)
-    assert(lastSeq1 <= lastSeq2, `${this.source.host}${this.source.pathname} is still receiving updates. Exiting...`)
+    assert(lastSeq1 <= lastSeq2, `${displayUrl(this.source)} is still receiving updates. Exiting...`)
     log('[4/5] Verifying primary and replica match...')
     await this._verifyReplica()
     log('[5/5] Primary copied to replica.')
   }
 
   async replacePrimary () {
-    log(`Replacing primary ${this.source.host}${this.source.pathname} using ${this.target.host}${this.target.pathname}...`)
+    log(`Replacing primary ${displayUrl(this.source)} using ${displayUrl(this.target)}...`)
     log('[0/8] Checking if primary is in use...')
     if (this.allowReplications) {
       log('Skipping check because replications are allowed')
@@ -384,7 +420,7 @@ class CouchContinuum {
     await new Promise((resolve) => {
       // sleep, giving the cluster a chance to sort
       // out the rapid recreation.
-      console.log(`[${name}] Recreating primary ${this.source.host}${this.source.pathname}`)
+      console.log(`[${name}] Recreating primary ${displayUrl(this.source)}`)
       const text = `[${name}] (:bar) :percent :etas`
       const bar = new ProgressBar(text, {
         incomplete: ' ',
