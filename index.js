@@ -243,15 +243,19 @@ class CouchContinuum {
     })
     var current = 0
     const timer = setInterval(async () => {
-      const { doc_count: latest } = await request({
-        url: target.href,
-        json: true
-      })
-      const delta = latest - current
-      bar.tick(delta)
-      current = latest
-      if (bar.complete) clearInterval(timer)
-      // TODO catch errors produced by this loop
+      try {
+        const { doc_count: latest } = await request({
+          url: target.href,
+          json: true
+        })
+        const delta = latest - current
+        bar.tick(delta)
+        current = latest
+        if (bar.complete) clearInterval(timer)
+      } catch (e) {
+        clearTimeout(timer)
+        throw e
+      }
     }, this.interval)
     await request({
       url: `${this.url.href}_replicate`,
