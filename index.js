@@ -284,12 +284,18 @@ class CouchContinuum {
     const srcName = `/${source.pathname.slice(1)}/`
     const tgtName = `/${target.pathname.slice(1)}/`
 
+    const isUs = (task) => {
+      return task.source?.includes(srcName) &&
+             task.target?.includes(tgtName) &&
+             task.missing_revisions_found > task.docs_written
+    }
+
     while (true) {
       const tasks = await request({
         url: `${this.url.href}_active_tasks`,
         json: true
       })
-      if (tasks.some((task) => task.source?.includes(srcName) && task.target?.includes(tgtName))) {
+      if (tasks.some(isUs)) {
         await this._sleep(1000)
       } else {
         return
