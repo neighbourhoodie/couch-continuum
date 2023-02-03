@@ -253,7 +253,7 @@ class CouchContinuum {
         current = latest
         if (bar.complete) clearInterval(timer)
       } catch (e) {
-        clearTimeout(timer)
+        clearInterval(timer)
         throw e
       }
     }, this.interval)
