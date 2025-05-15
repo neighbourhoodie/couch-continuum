@@ -7,7 +7,9 @@
     "couch-continuum": "bin.js"
   },
   "scripts": {
-    "test": "standard && dependency-check . --unused --no-dev && LOG=true mocha && npm audit"
+    "audit": "npm run audit",
+    "test": "standard && dependency-check . --unused --no-dev && LOG=true mocha",
+    "format": "standard --fix"
   },
   "author": "Diana Thayer <garbados@gmail.com>",
   "license": "Apache-2.0",
@@ -19,7 +21,7 @@
   "devDependencies": {
     "dependency-check": "^4.1.0",
     "mocha": "^10.2.0",
-    "standard": "^14.3.4"
+    "standard": "^17.1.2"
   },
   "repository": {
     "type": "git",

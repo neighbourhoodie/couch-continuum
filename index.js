@@ -241,7 +241,7 @@ class CouchContinuum {
       width: 20,
       total
     })
-    var current = 0
+    let current = 0
     const timer = setInterval(async () => {
       try {
         const { doc_count: latest } = await request({
@@ -383,9 +383,11 @@ class CouchContinuum {
     log(`[1/5] Creating replica db: ${displayUrl(this.target)}`)
     await this._createDb(this.target.href)
     log('[2/5] Beginning replication of primary to replica...')
-    const selector = this.filterTombstones ? {
-      _deleted: { $exists: false }
-    } : undefined
+    const selector = this.filterTombstones
+      ? {
+          _deleted: { $exists: false }
+        }
+      : undefined
     await this._replicate(this.source, this.target, selector)
     if (this.continuous) {
       log(`Setting up continuous replication from ${this.source} to ${this.target}...`)

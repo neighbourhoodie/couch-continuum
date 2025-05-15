@@ -12,14 +12,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: ['14.x', '16.x', '18.x']
+        node-version: ['20.x', '22.x', '24.x']
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -35,3 +35,5 @@ jobs:
       - run: npm test
         env:
           COUCH_URL: http://admin:password@127.0.0.1:5984
+      
+      - run: npm audit
